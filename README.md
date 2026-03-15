@@ -156,7 +156,7 @@ EntityEvents.hurtPre(event => {
 NekoJS 目前正处于活跃开发阶段！无论是提交 Issue 报告 Bug、提供功能建议，还是提交 Pull Request，我们都非常欢迎！
 
 * **API 文档**: [即将到来]
-* **QQ 群**: [请在此处填写你的 QQ 群号]
+* **QQ 群**: 1158525822 [点击加入群聊【NekoJS 魔改交流群（？】](https://qm.qq.com/q/rbryak0K6k)
 
 ---
 ### License
