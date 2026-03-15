@@ -6,6 +6,8 @@
 
 NekoJS 是一个基于 **NeoForge** 和 **GraalVM** 构建的新一代 Minecraft 脚本运行时。它不仅仅是一个执行 JavaScript 的工具，更致力于为整合包作者和模组开发者提供**比肩现代前端工程化**的极致开发体验。
 
+**前置需要[GraalJS](https://github.com/Tki-sor/GraalJS-MC)，该mod无任何版本限制，只要版本大于1.21.1即可**
+
 （部分代码使用Gemini/ChatGPT生成，看板娘图像由ChatGPT生成）
 
 ## ✨ 核心特性
