@@ -3,6 +3,7 @@ package com.tkisor.nekojs.bindings.event;
 import com.tkisor.nekojs.api.EventGroup;
 import com.tkisor.nekojs.api.event.TargetedEventHandler;
 import com.tkisor.nekojs.wrapper.event.block.BlockBreakEventJS;
+import com.tkisor.nekojs.wrapper.event.block.BlockPlaceEventJS;
 import com.tkisor.nekojs.wrapper.event.block.BlockRightClickEventJS;
 
 public interface BlockEvents {
@@ -12,4 +13,7 @@ public interface BlockEvents {
             GROUP.targetedServer("broken", () -> BlockBreakEventJS.class);
     TargetedEventHandler<BlockRightClickEventJS> RIGHT_CLICKED =
             GROUP.targetedServer("rightClicked", () -> BlockRightClickEventJS.class);
+    TargetedEventHandler<BlockPlaceEventJS> PLACED =
+            GROUP.targetedServer("placed", () -> BlockPlaceEventJS.class);
+
 }

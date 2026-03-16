@@ -10,9 +10,11 @@ public class ModifyWorkspaceConfigEvent extends Event {
     private final JSConfigModel model;
     @Setter
     private String fileName = "jsconfig.json";
+    private final String env;
 
-    public ModifyWorkspaceConfigEvent(JSConfigModel model) {
+    public ModifyWorkspaceConfigEvent(JSConfigModel model, String env) {
         this.model = model;
+        this.env = env;
     }
 
 }

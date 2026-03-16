@@ -80,6 +80,12 @@ tasks.withType(Jar).configureEach {
     archiveVersion.set("${minecraft_version}-${mod_version}")
 }
 
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.compilerArgs += ['-parameters']
+    options.debug = true
+}
+
 var generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {
     var replaceProperties = [
             minecraft_version      : minecraft_version,

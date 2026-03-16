@@ -5,12 +5,10 @@ import java.util.List;
 
 public class JSConfigModel {
     public CompilerOptions compilerOptions = new CompilerOptions();
+
     public List<String> include = Arrays.asList(
-            "startup_scripts/**/*",
-            "server_scripts/**/*",
-            "client_scripts/**/*",
-            "common_scripts/**/*",
-            "probe/**/*"
+            "./**/*.js",
+            "./**/*.ts"
     );
 
     public static class CompilerOptions {
@@ -25,7 +23,11 @@ public class JSConfigModel {
         public List<String> lib = List.of("ESNext");
         public boolean allowJs = true;
         public boolean checkJs = false;
+
+        public boolean skipLibCheck = true;
+
         public String baseUrl = ".";
-        public List<String> typeRoots = List.of("./probe");
+
+        public List<String> typeRoots;
     }
 }

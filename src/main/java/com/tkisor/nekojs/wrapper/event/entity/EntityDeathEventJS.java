@@ -20,10 +20,10 @@ public class EntityDeathEventJS implements NekoEvent {
 
     public EntityDeathEventJS(LivingDeathEvent rawEvent) {
         this.rawEvent = rawEvent;
-        this.entity = new EntityWrapper(rawEvent.getEntity());
+        this.entity = EntityWrapper.of(rawEvent.getEntity());
 
         Entity trueAttacker = rawEvent.getSource().getEntity();
-        this.attacker = trueAttacker != null ? new EntityWrapper(trueAttacker) : null;
+        this.attacker = trueAttacker != null ? EntityWrapper.of(trueAttacker) : null;
     }
 
     public String getEntityId() {

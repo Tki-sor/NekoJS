@@ -1,13 +1,14 @@
 package com.tkisor.nekojs.wrapper.entity;
 
+import com.tkisor.nekojs.wrapper.NekoWrapper;
 import lombok.Getter;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.phys.Vec3;
 
-public class EntityWrapper {
-
+public class EntityWrapper implements NekoWrapper<Entity> {
     @Getter
     protected final Entity raw;
 
@@ -15,9 +16,17 @@ public class EntityWrapper {
         this.raw = entity;
     }
 
+    public static EntityWrapper of(Entity entity) {
+        return switch (entity) {
+            case null -> null;
+            case Player p -> new PlayerWrapper(p);
+            case LivingEntity le -> new LivingEntityWrapper(le);
+            default -> new EntityWrapper(entity);
+        };
+    }
+
     public String getId() {
         if (raw == null) return "minecraft:empty";
-        if (raw instanceof Player) return "minecraft:player";
         return BuiltInRegistries.ENTITY_TYPE.getKey(raw.getType()).toString();
     }
 
@@ -25,18 +34,10 @@ public class EntityWrapper {
     public double getX() { return raw.getX(); }
     public double getY() { return raw.getY(); }
     public double getZ() { return raw.getZ(); }
+    public Vec3 getPos() { return raw.position(); }
 
-    public boolean isPlayer() { return raw instanceof Player; }
+    public void setOnFire(int seconds) { raw.igniteForSeconds(seconds); }
 
-    public float getHealth() {
-        return raw instanceof LivingEntity le ? le.getHealth() : 0;
-    }
-
-    public void setHealth(float health) {
-        if (raw instanceof LivingEntity le) le.setHealth(health);
-    }
-
-    public float getMaxHealth() {
-        return raw instanceof LivingEntity le ? le.getMaxHealth() : 0;
-    }
+    @Override
+    public Entity unwrap() { return raw; }
 }

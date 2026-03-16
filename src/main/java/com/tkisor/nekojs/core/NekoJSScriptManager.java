@@ -77,18 +77,6 @@ public final class NekoJSScriptManager {
             plugin.registerBindings(bindings::putMember);
         });
 
-        try {
-            ctx.eval("js", """
-                if (typeof require !== 'undefined' && require.extensions) {
-                    require.extensions['.ts'] = require.extensions['.js'];
-                    require.extensions['.tsx'] = require.extensions['.js'];
-                    require.extensions['.jsx'] = require.extensions['.js']; // ✨ 补上 .jsx
-                }
-            """);
-        } catch (Exception e) {
-            type.logger().warn("注入 require 扩展名补丁失败", e);
-        }
-
         return ctx;
     }
 

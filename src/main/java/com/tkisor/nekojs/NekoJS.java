@@ -9,10 +9,7 @@ import com.tkisor.nekojs.bindings.event.RegistryEvents;
 import com.tkisor.nekojs.command.NekoJSCommands;
 import com.tkisor.nekojs.core.NekoJSScriptManager;
 import com.tkisor.nekojs.core.fs.NekoJSPaths;
-import com.tkisor.nekojs.js.type_adapter.IngredientAdapter;
-import com.tkisor.nekojs.js.type_adapter.ItemStackAdapter;
-import com.tkisor.nekojs.js.type_adapter.IdentifierAdapter;
-import com.tkisor.nekojs.js.type_adapter.ItemStackWrapperAdapter;
+import com.tkisor.nekojs.js.type_adapter.*;
 import com.tkisor.nekojs.script.ScriptBootstrap;
 import com.tkisor.nekojs.script.ScriptType;
 import com.tkisor.nekojs.utils.ReflectionUtils;
@@ -119,7 +116,7 @@ public class NekoJS {
     }
 
     private void onCommonSetup(FMLCommonSetupEvent event) {
-        event.enqueueWork(NekoJSPaths::createWorkspaceConfig);
+        event.enqueueWork(NekoJSPaths::createWorkspaceConfigs);
     }
 
     private void onServerStarting(ServerStartingEvent event) {
@@ -131,7 +128,7 @@ public class NekoJS {
         try {
             NekoJS.SCRIPT_MANAGER.reloadScripts(ScriptType.SERVER);
         } catch (Exception e) {
-            throw new RuntimeException(e);
+//            throw new RuntimeException(e);
         }
     }
 
@@ -160,5 +157,6 @@ public class NekoJS {
         event.register(new ItemStackWrapperAdapter());
         event.register(new IngredientAdapter());
         event.register(new IdentifierAdapter());
+        event.register(new RecipeFilterAdapter());
     }
 }

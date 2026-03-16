@@ -9,7 +9,7 @@ import net.minecraft.world.item.ItemStack;
 
 import java.util.Optional;
 
-public class ItemStatic {
+public class ItemJS {
 
     /**
      * 核心工厂方法

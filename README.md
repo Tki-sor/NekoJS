@@ -76,7 +76,7 @@ const { calculateDamage, MOD_NAME } = require('./utils.ts');
 console.log(`[${MOD_NAME}] 正在加载自定义逻辑...`);
 
 // 监听游戏事件
-ServerEvent.tick(event => {
+ServerEvents.tickPre(event => {
 // 你的 Tick 逻辑
 });
 ```

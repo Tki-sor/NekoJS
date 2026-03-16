@@ -114,6 +114,19 @@ public final class NekoSandboxBuilder {
                 .build();
 
         ctx.eval("js", CONSOLE_PATCH_JS);
+        ctx.eval("js", "Java.loadClass = Java.type;");
+        try {
+            ctx.eval("js", """
+                if (typeof require !== 'undefined' && require.extensions) {
+                    require.extensions['.ts'] = require.extensions['.js'];
+                    require.extensions['.tsx'] = require.extensions['.js'];
+                    require.extensions['.jsx'] = require.extensions['.js'];
+                }
+            """);
+        } catch (Exception e) {
+            type.logger().warn("注入 require 扩展名补丁失败", e);
+        }
+
         return ctx;
     }
 

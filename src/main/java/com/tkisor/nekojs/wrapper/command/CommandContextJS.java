@@ -29,7 +29,7 @@ public class CommandContextJS {
         rawContext.getSource().sendSystemMessage(message);
     }
 
-    public CommandContext<CommandSourceStack> getRaw() {
+    public CommandContext<CommandSourceStack> unwrap() {
         return rawContext;
     }
 }
