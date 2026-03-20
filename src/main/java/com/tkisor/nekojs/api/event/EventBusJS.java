@@ -8,35 +8,30 @@ import com.tkisor.nekojs.utils.event.dispatch.DispatchEventBus;
 import com.tkisor.nekojs.utils.event.dispatch.DispatchKey;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Consumer;
-import java.util.function.Function;
 import java.util.function.Predicate;
 
 /**
  * @author ZZZank
  */
 public class EventBusJS<EVENT, KEY> implements ProxyExecutable {
-    public static <E, K> EventBusJS<E, K> of(EventBus<E> bus, Function<Object, K> keyTransformer) {
-        return new EventBusJS<>(bus, keyTransformer);
+    public static <E, K> EventBusJS<E, K> of(Class<E> eventType) {
+        return of(eventType, NekoCancellableEvent.class.isAssignableFrom(eventType));
     }
 
-    public static <E> EventBusJS<E, Void> of(Class<E> eventType) {
-        return new EventBusJS<>(EventBus.create(eventType), null);
-    }
-
-    public static <E> EventBusJS<E, Void> ofCancellable(Class<E> eventType) {
-        return new EventBusJS<>(CancellableEventBus.create(eventType), null);
+    public static <E, K> EventBusJS<E, K> of(Class<E> eventType, boolean cancellable) {
+        return of(eventType, cancellable, null);
     }
 
     public static <E, K> EventBusJS<E, K> of(
         Class<E> eventType,
         boolean cancellable,
-        DispatchKey<E, K> dispatchKey,
-        Function<Object, K> keyTransformer
+        @Nullable DispatchKey<E, K> dispatchKey
     ) {
         EventBus<E> bus;
         if (cancellable) {
@@ -48,17 +43,15 @@ public class EventBusJS<EVENT, KEY> implements ProxyExecutable {
                 ? DispatchEventBus.create(eventType, dispatchKey)
                 : EventBus.create(eventType);
         }
-        return new EventBusJS<>(bus, keyTransformer);
+        return new EventBusJS<>(bus);
     }
 
     private final EventBus<EVENT> bus;
     private final List<EventListenerToken<EVENT>> tokens;
-    private final Function<Object, KEY> keyTransformer;
 
-    protected EventBusJS(EventBus<EVENT> bus, Function<Object, KEY> keyTransformer) {
+    public EventBusJS(EventBus<EVENT> bus) {
         this.bus = Objects.requireNonNull(bus);
         this.tokens = new ArrayList<>();
-        this.keyTransformer = keyTransformer;
     }
 
     public boolean canCancel() {
@@ -127,7 +120,7 @@ public class EventBusJS<EVENT, KEY> implements ProxyExecutable {
     private EventListenerToken<EVENT> registerDispatch(Value listener, Value key) {
         var bus = (DispatchEventBus<EVENT, KEY>) this.bus;
         return bus.listen(
-            this.keyTransformer.apply(key),
+            key.as(bus.dispatchKey().keyType()),
             (Consumer<EVENT>) listener.as(Consumer.class)
         );
     }
@@ -135,7 +128,7 @@ public class EventBusJS<EVENT, KEY> implements ProxyExecutable {
     private EventListenerToken<EVENT> registerDispatchCancellable(Value listener, Value key) {
         var bus = (DispatchCancellableEventBus<EVENT, KEY>) this.bus;
         return bus.listen(
-            this.keyTransformer.apply(key),
+            key.as(bus.dispatchKey().keyType()),
             (Predicate<EVENT>) listener.as(Predicate.class)
         );
     }
