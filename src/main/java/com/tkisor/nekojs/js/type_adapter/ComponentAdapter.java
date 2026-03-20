@@ -12,11 +12,11 @@ public class ComponentAdapter implements JSTypeAdapter<Component> {
 
     @Override
     public boolean canConvert(Value value) {
-        return false;
+        return value.isString();
     }
 
     @Override
     public Component convert(Value value) {
-        return null;
+        return Component.literal(value.asString());
     }
 }

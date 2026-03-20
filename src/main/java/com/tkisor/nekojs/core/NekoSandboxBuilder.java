@@ -85,7 +85,9 @@ public final class NekoSandboxBuilder {
     private NekoSandboxBuilder() {}
 
     public static Context build(ScriptType type) {
-        HostAccess.Builder hostBuilder = HostAccess.newBuilder(HostAccess.ALL);
+        HostAccess.Builder hostBuilder = HostAccess.newBuilder(HostAccess.ALL)
+                .allowAllClassImplementations(true)
+                .allowAllImplementations(true);
 
         NekoJSTypeAdapters.all().forEach(adapter -> registerTypeAdapter(hostBuilder, adapter));
 
@@ -102,6 +104,7 @@ public final class NekoSandboxBuilder {
                 .allowCreateThread(true)
                 .allowHostClassLookup(c -> CLASS_BLACKLIST.stream().noneMatch(c::startsWith))
                 .option("engine.WarnInterpreterOnly", "false")
+                .option("js.foreign-object-prototype", "true")
                 .option("js.nashorn-compat", "true")
                 .option("js.ecmascript-version", "latest")
                 .option("js.commonjs-require", "true")

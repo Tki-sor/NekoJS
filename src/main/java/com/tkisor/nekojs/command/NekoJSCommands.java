@@ -4,7 +4,6 @@ import com.mojang.brigadier.CommandDispatcher;
 import com.tkisor.nekojs.NekoJS;
 import com.tkisor.nekojs.core.error.NekoErrorTracker;
 import com.tkisor.nekojs.core.error.ScriptError;
-import com.tkisor.nekojs.core.fs.NekoJSPaths;
 import com.tkisor.nekojs.network.ShowErrorScreenPacket;
 import com.tkisor.nekojs.script.ScriptType;
 import net.minecraft.commands.CommandSourceStack;
@@ -43,23 +42,28 @@ public final class NekoJSCommands {
 
                                         if (NekoErrorTracker.hasErrors()) {
                                             source.sendFailure(Component.literal("§c[NekoJS] ✖ 重载完毕，但存在 " + NekoErrorTracker.getAllErrors().size() + " 个错误："));
-
-                                            for (ScriptError error : NekoErrorTracker.getAllErrors()) {
-                                                String idStr = error.getScript().id.toString();
-                                                String pathStr = NekoJSPaths.ROOT.relativize(error.getScript().path).toString().replace('\\', '/');
-
-                                                MutableComponent link = Component.literal("  §4▶ §c" + pathStr + " §8(第 " + error.getLineNumber() + " 行)")
-                                                        .withStyle(style -> style
-                                                                .withHoverEvent(new HoverEvent.ShowText(Component.literal("§e点击在全屏 UI 中查看堆栈详情")))
-                                                                .withClickEvent(new ClickEvent.RunCommand("/nekojs view_error " + idStr))
-                                                        );
-                                                source.sendSystemMessage(link);
-                                            }
+                                            // 复用输出逻辑
+                                            printErrorsToSource(source);
                                         } else {
                                             source.sendSuccess(() -> Component.literal("§a[NekoJS] ✔ 脚本完美重载！"), true);
                                         }
                                     } catch (Exception e) {
                                         source.sendFailure(Component.literal("§c[NekoJS] ✖ 重载发生致命崩溃！请查看后台日志。"));
+                                    }
+                                    return 1;
+                                })
+                        )
+
+                        .then(Commands.literal("error")
+                                .executes(context -> {
+                                    CommandSourceStack source = context.getSource();
+
+                                    if (NekoErrorTracker.hasErrors()) {
+                                        source.sendFailure(Component.literal("§c[NekoJS] ⚠ 当前环境存在 " + NekoErrorTracker.getAllErrors().size() + " 个运行错误："));
+                                        // 复用输出逻辑
+                                        printErrorsToSource(source);
+                                    } else {
+                                        source.sendSuccess(() -> Component.literal("§a[NekoJS] ✔ 当前运行环境非常健康，没有任何脚本错误！"), false);
                                     }
                                     return 1;
                                 })
@@ -82,5 +86,21 @@ public final class NekoJSCommands {
                                 )
                         )
         );
+    }
+
+    private static void printErrorsToSource(CommandSourceStack source) {
+        for (ScriptError error : NekoErrorTracker.getAllErrors()) {
+            String idStr = error.getErrorId().toString();
+            String pathStr = error.getDisplayPath();
+
+            String countBadge = error.getOccurrenceCount() > 1 ? " §6[x" + error.getOccurrenceCount() + "]" : "";
+
+            MutableComponent link = Component.literal("  §4▶ §c" + pathStr + " §8(第 " + error.getLineNumber() + " 行)" + countBadge)
+                    .withStyle(style -> style
+                            .withHoverEvent(new HoverEvent.ShowText(Component.literal("§c" + error.getErrorMessage() + "\n§e点击在全屏 UI 中查看堆栈详情")))
+                            .withClickEvent(new ClickEvent.RunCommand("/nekojs view_error " + idStr))
+                    );
+            source.sendSystemMessage(link);
+        }
     }
 }

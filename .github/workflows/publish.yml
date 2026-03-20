@@ -1,0 +1,68 @@
+name: Auto Build and Publish
+
+on:
+  push:
+    branches: [ "master" ] # 确认你的主分支是 master 还是 main
+
+jobs:
+  # 阶段 1：检测 Commit 记录
+  check-commit:
+    runs-on: ubuntu-latest
+    outputs:
+      should_publish: ${{ steps.match.outputs.should_publish }}
+      version: ${{ steps.match.outputs.version }}
+    steps:
+      - name: Extract version from commit message
+        id: match
+        run: |
+          COMMIT_MSG="${{ github.event.head_commit.message }}"
+          
+          # 修复 1：将正则表达式存入变量，完美避开空格解析问题
+          REGEX="update ([0-9a-zA-Z.-]+)"
+          
+          if [[ "$COMMIT_MSG" =~ $REGEX ]]; then
+            echo "Matched version: ${BASH_REMATCH[1]}"
+            echo "should_publish=true" >> $GITHUB_OUTPUT
+            echo "version=${BASH_REMATCH[1]}" >> $GITHUB_OUTPUT
+          else
+            echo "No 'update' pattern found. Skipping build."
+            echo "should_publish=false" >> $GITHUB_OUTPUT
+          fi
+
+  # 阶段 2：编译 Mod 并发布 Release
+  build-and-release:
+    needs: check-commit
+    if: needs.check-commit.outputs.should_publish == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: '25' # 没问题，既然使用较新环境，Java 25 是合适的
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Make gradlew executable
+        # 修复 2：赋予 gradle 脚本执行权限，防止 Windows 环境提交导致的权限丢失
+        run: chmod +x ./gradlew
+
+      - name: Build Mod
+        run: ./gradlew build
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ needs.check-commit.outputs.version }}
+          name: NekoJS v${{ needs.check-commit.outputs.version }}
+          body: "Automated release triggered by commit.\n\nCommit Message: ${{ github.event.head_commit.message }}"
+          # 修复 3：规避 sources.jar 等附属文件（假设你的主 jar 叫 nekojs-...）
+          # 如果你确实想上传所有 jar，可以改回 build/libs/*.jar
+          files: build/libs/*.jar

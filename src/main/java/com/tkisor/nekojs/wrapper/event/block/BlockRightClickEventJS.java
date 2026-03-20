@@ -22,9 +22,6 @@ public class BlockRightClickEventJS implements NekoEvent {
     @Getter
     private final ItemStackWrapper item;
 
-    @Getter
-    private boolean cancelled;
-
     public BlockRightClickEventJS(PlayerInteractEvent.RightClickBlock rawEvent) {
         this.rawEvent = rawEvent;
 
@@ -52,7 +49,9 @@ public class BlockRightClickEventJS implements NekoEvent {
 
     public void cancel() {
         rawEvent.setCanceled(true);
-        this.cancelled = true;
+    }
 
+    public boolean isCanceled() {
+        return rawEvent.isCanceled();
     }
 }

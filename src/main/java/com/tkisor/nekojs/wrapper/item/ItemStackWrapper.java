@@ -23,21 +23,33 @@ public class ItemStackWrapper implements NekoWrapper<ItemStack> {
         return BuiltInRegistries.ITEM.getKey(rawStack.getItem()).toString();
     }
 
-    public int getCount() { return rawStack.getCount(); }
+    public boolean isEmpty() {
+        return rawStack.isEmpty();
+    }
 
-    public ItemStackWrapper setCount(int count) {
+    public int getCount() {
+        return rawStack.getCount();
+    }
+
+    public void setCount(int count) {
+        rawStack.setCount(count);
+    }
+
+    public ItemStackWrapper withCount(int count) {
         rawStack.setCount(count);
         return this;
     }
-
-    public boolean isEmpty() { return rawStack.isEmpty(); }
 
     public String getName() {
         return rawStack.getHoverName().getString();
     }
 
-    public ItemStackWrapper setName(String name) {
+    public void setName(String name) {
         rawStack.set(DataComponents.CUSTOM_NAME, Component.literal(name));
+    }
+
+    public ItemStackWrapper withName(String name) {
+        this.setName(name);
         return this;
     }
 
@@ -49,40 +61,69 @@ public class ItemStackWrapper implements NekoWrapper<ItemStack> {
                 .collect(Collectors.toList());
     }
 
-    public ItemStackWrapper setLore(List<String> lines) {
+    public void setLore(List<String> lines) {
         List<Component> components = lines.stream()
                 .map(Component::literal)
                 .collect(Collectors.toList());
         rawStack.set(DataComponents.LORE, new ItemLore(components));
+    }
+
+    public ItemStackWrapper withLore(List<String> lines) {
+        this.setLore(lines);
         return this;
     }
 
-    public ItemStackWrapper setEnchanted(boolean enchanted) {
+    public boolean isEnchanted() {
+        Boolean glint = rawStack.get(DataComponents.ENCHANTMENT_GLINT_OVERRIDE);
+        return glint != null ? glint : rawStack.isEnchanted();
+    }
+
+    public void setEnchanted(boolean enchanted) {
         if (enchanted) {
             rawStack.set(DataComponents.ENCHANTMENT_GLINT_OVERRIDE, true);
         } else {
             rawStack.remove(DataComponents.ENCHANTMENT_GLINT_OVERRIDE);
         }
+    }
+
+    public ItemStackWrapper withEnchanted(boolean enchanted) {
+        this.setEnchanted(enchanted);
         return this;
     }
 
-    public ItemStackWrapper setUnbreakable(boolean unbreakable) {
+    public boolean isUnbreakable() {
+        return rawStack.has(DataComponents.UNBREAKABLE);
+    }
+
+    public void setUnbreakable(boolean unbreakable) {
         if (unbreakable) {
             rawStack.set(DataComponents.UNBREAKABLE, Unit.INSTANCE);
         } else {
             rawStack.remove(DataComponents.UNBREAKABLE);
         }
+    }
+
+    public ItemStackWrapper withUnbreakable(boolean unbreakable) {
+        this.setUnbreakable(unbreakable);
         return this;
     }
 
-    public int getDamage() { return rawStack.getDamageValue(); }
+    public int getDamage() {
+        return rawStack.getDamageValue();
+    }
 
-    public ItemStackWrapper setDamage(int damage) {
+    public void setDamage(int damage) {
+        rawStack.setDamageValue(damage);
+    }
+
+    public ItemStackWrapper withDamage(int damage) {
         rawStack.setDamageValue(damage);
         return this;
     }
 
-    public int getMaxDamage() { return rawStack.getMaxDamage(); }
+    public int getMaxDamage() {
+        return rawStack.getMaxDamage();
+    }
 
     public void clearEnchantments() {
         rawStack.set(DataComponents.ENCHANTMENTS, ItemEnchantments.EMPTY);

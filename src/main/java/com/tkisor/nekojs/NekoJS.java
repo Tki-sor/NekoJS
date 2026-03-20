@@ -116,8 +116,7 @@ public class NekoJS {
     }
 
     private void onServerStarting(ServerStartingEvent event) {
-        LOGGER.info("[NekoJS] 服务器启动，正在加载 SERVER 脚本...");
-//        SCRIPT_MANAGER.loadScripts(ScriptType.SERVER);
+//        LOGGER.info("[NekoJS] 服务器启动，正在加载 SERVER 脚本...");
     }
 
     private void onServerResourceReload(AddServerReloadListenersEvent event) {
@@ -131,10 +130,17 @@ public class NekoJS {
     private void onRegister(RegisterEvent event) {
         if (event.getRegistryKey().equals(Registries.BLOCK)) {
             BlockRegistryEventJS eventJS = new BlockRegistryEventJS(event);
+
             RegistryEvents.BLOCK.post(eventJS);
+
+            eventJS.registerAll();
+
         } else if (event.getRegistryKey().equals(Registries.ITEM)) {
             ItemRegistryEventJS eventJS = new ItemRegistryEventJS(event);
+
             RegistryEvents.ITEM.post(eventJS);
+
+             eventJS.registerAll();
 
             BlockRegistryEventJS.PENDING_BLOCK_ITEMS.forEach((location, block) -> {
                 event.register(Registries.ITEM, location, () -> {
@@ -144,6 +150,7 @@ public class NekoJS {
                     return new BlockItem(block, props);
                 });
             });
+
             BlockRegistryEventJS.PENDING_BLOCK_ITEMS.clear();
         }
     }

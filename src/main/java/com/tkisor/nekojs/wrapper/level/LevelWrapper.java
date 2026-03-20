@@ -1,6 +1,8 @@
 package com.tkisor.nekojs.wrapper.level;
 
 import com.tkisor.nekojs.wrapper.NekoWrapper;
+import com.tkisor.nekojs.wrapper.block.BlockWrapper;
+import com.tkisor.nekojs.wrapper.entity.EntityWrapper;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -9,6 +11,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.clock.WorldClock;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LightningBolt;
@@ -27,30 +30,37 @@ public class LevelWrapper implements NekoWrapper<Level> {
     }
 
     public String getDimension() {
-        return this.level.dimension().registry().toString();
+        return this.level.dimension().identifier().toString();
     }
 
-    public boolean setBlock(int x, int y, int z, String blockId) {
-        Identifier location = Identifier.tryParse(blockId);
-        if (location == null) return false;
-
-        Block block = BuiltInRegistries.BLOCK.get(location)
-                .map(Holder.Reference::value)
-                .orElse(Blocks.AIR);
-
-        if (block == Blocks.AIR && !blockId.equals("minecraft:air")) {
-            return false;
-        }
-
+    public BlockWrapper getBlock(int x, int y, int z) {
         BlockPos pos = new BlockPos(x, y, z);
-        return this.level.setBlockAndUpdate(pos, block.defaultBlockState());
+        return new BlockWrapper(this.level, pos, this.level.getBlockState(pos));
+    }
+
+    public void setBlock(int x, int y, int z, Identifier blockId) {
+        getBlock(x, y, z).set(blockId);
     }
 
     public String getBlockId(int x, int y, int z) {
-        BlockPos pos = new BlockPos(x, y, z);
-        BlockState state = this.level.getBlockState(pos);
-        Identifier location = BuiltInRegistries.BLOCK.getKey(state.getBlock());
-        return location != null ? location.toString() : "minecraft:air";
+        return getBlock(x, y, z).getId();
+    }
+
+    public EntityWrapper spawnEntity(Identifier entityId, double x, double y, double z) {
+        if (!(this.level instanceof ServerLevel serverLevel)) return null;
+
+        if (entityId == null) return null;
+
+        EntityType<?> type = BuiltInRegistries.ENTITY_TYPE.getOptional(entityId).orElse(null);
+        if (type == null) return null;
+
+        Entity entity = type.create(serverLevel, EntitySpawnReason.EVENT);
+        if (entity != null) {
+            entity.setPos(x, y, z);
+            serverLevel.addFreshEntity(entity);
+            return EntityWrapper.of(entity);
+        }
+        return null;
     }
 
     public void spawnLightning(double x, double y, double z) {
@@ -63,11 +73,15 @@ public class LevelWrapper implements NekoWrapper<Level> {
         }
     }
 
-    public void playSound(String soundId, double x, double y, double z, float volume, float pitch) {
-        Identifier location = Identifier.tryParse(soundId);
-        if (location == null) return;
+    public void explode(double x, double y, double z, float radius, boolean breakBlocks) {
+        Level.ExplosionInteraction interaction = breakBlocks ? Level.ExplosionInteraction.BLOCK : Level.ExplosionInteraction.NONE;
+        this.level.explode(null, x, y, z, radius, interaction);
+    }
 
-        SoundEvent soundEvent = SoundEvent.createVariableRangeEvent(location);
+    public void playSound(Identifier soundId, double x, double y, double z, float volume, float pitch) {
+        if (soundId == null) return;
+
+        SoundEvent soundEvent = SoundEvent.createVariableRangeEvent(soundId);
         this.level.playSound(null, x, y, z, soundEvent, SoundSource.PLAYERS, volume, pitch);
     }
 
@@ -99,9 +113,12 @@ public class LevelWrapper implements NekoWrapper<Level> {
         }
     }
 
-    public boolean isDay() {
-        long timeOfDay = this.getTime() % 24000L;
-        return timeOfDay >= 0 && timeOfDay < 13000;
+    public boolean isBrightOutside() {
+        return this.level.isBrightOutside();
+    }
+
+    public boolean isDarkOutside() {
+        return this.level.isDarkOutside();
     }
 
     public boolean isRaining() {

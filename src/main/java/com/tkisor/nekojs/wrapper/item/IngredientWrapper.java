@@ -1,5 +1,6 @@
 package com.tkisor.nekojs.wrapper.item;
 
+import com.tkisor.nekojs.NekoJS; // 假设你有这个主类用于输出日志
 import com.tkisor.nekojs.wrapper.NekoWrapper;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderSet;
@@ -13,10 +14,13 @@ import net.minecraft.world.item.crafting.Ingredient;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 public class IngredientWrapper implements NekoWrapper<Ingredient> {
 
     private final List<String> rawIds = new ArrayList<>();
+
+    public IngredientWrapper() {}
 
     public IngredientWrapper(String... ids) {
         for (String id : ids) {
@@ -49,31 +53,39 @@ public class IngredientWrapper implements NekoWrapper<Ingredient> {
     public Ingredient unwrap() {
         if (this.rawIds.isEmpty()) return Ingredient.of(Items.BARRIER);
 
-        List<Holder<Item>> allHolders = new java.util.ArrayList<>();
+        List<Holder<Item>> allHolders = new ArrayList<>();
 
         for (String rawId : this.rawIds) {
             boolean isTag = rawId.startsWith("#");
-            Identifier loc = Identifier.tryParse(isTag ? rawId.substring(1) : rawId);
-            if (loc == null) continue;
+            String cleanId = isTag ? rawId.substring(1) : rawId;
+            Identifier loc = Identifier.tryParse(cleanId);
+
+            if (loc == null) {
+                NekoJS.LOGGER.warn("[IngredientWrapper] 无法解析的材料 ID 格式: {}", rawId);
+                continue;
+            }
 
             if (isTag) {
-                TagKey<Item> tagKey =
-                        TagKey.create(Registries.ITEM, loc);
+                TagKey<Item> tagKey = TagKey.create(Registries.ITEM, loc);
+                Optional<HolderSet.Named<Item>> tagHolders = BuiltInRegistries.ITEM.get(tagKey);
 
-                BuiltInRegistries.ITEM.get(tagKey).ifPresent(holders -> {
-                    for (net.minecraft.core.Holder<net.minecraft.world.item.Item> h : holders) {
-                        allHolders.add(h);
-                    }
-                });
+                if (tagHolders.isPresent()) {
+                    tagHolders.get().forEach(allHolders::add);
+                } else {
+                    NekoJS.LOGGER.warn("[IngredientWrapper] 找不到物品标签: {}，请检查是否拼写错误！", rawId);
+                }
             } else {
                 Item item = BuiltInRegistries.ITEM.getValue(loc);
                 if (item != Items.AIR) {
                     allHolders.add(item.builtInRegistryHolder());
+                } else {
+                    NekoJS.LOGGER.warn("[IngredientWrapper] 找不到物品: {}，请检查是否拼写错误！", rawId);
                 }
             }
         }
 
         if (allHolders.isEmpty()) {
+            NekoJS.LOGGER.warn("[IngredientWrapper] 该材料对象最终为空，将使用屏障(Barrier)代替。");
             return Ingredient.of(Items.BARRIER);
         }
 

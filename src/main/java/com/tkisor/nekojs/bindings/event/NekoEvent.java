@@ -4,7 +4,7 @@ public interface NekoEvent {
     default void cancel() {
     }
 
-    default boolean isCancelled() {
+    default boolean isCanceled() {
         return false;
     }
 

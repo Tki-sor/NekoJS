@@ -17,9 +17,6 @@ public class BlockPlaceEventJS implements NekoEvent {
     @Getter
     private final BlockWrapper block;
 
-    @Getter
-    private boolean cancelled;
-
     public BlockPlaceEventJS(BlockEvent.EntityPlaceEvent rawEvent) {
         this.rawEvent = rawEvent;
 
@@ -46,7 +43,9 @@ public class BlockPlaceEventJS implements NekoEvent {
 
     public void cancel() {
         rawEvent.setCanceled(true);
+    }
 
-        this.cancelled = true;
+    public boolean isCanceled() {
+        return rawEvent.isCanceled();
     }
 }

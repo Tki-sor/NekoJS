@@ -24,10 +24,11 @@ import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 
 @EventBusSubscriber(modid = NekoJS.MODID)
 public class PlayerEventListener {
+
     @SubscribeEvent
     public static void onPlayerJoin(PlayerEvent.PlayerLoggedInEvent event) {
         PlayerLoggedInEventJS eventJS = new PlayerLoggedInEventJS(event);
-         PlayerEvents.LOGGED_IN.post(eventJS);
+        PlayerEvents.LOGGED_IN.post(eventJS);
 
         if (event.getEntity() instanceof ServerPlayer player) {
             if (Commands.LEVEL_GAMEMASTERS.check(player.permissions()) && NekoErrorTracker.hasErrors()) {
@@ -35,12 +36,14 @@ public class PlayerEventListener {
                 player.sendSystemMessage(Component.literal("§c[NekoJS] ⚠ 警告：当前环境存在 " + NekoErrorTracker.getAllErrors().size() + " 个脚本运行错误！"));
 
                 for (ScriptError error : NekoErrorTracker.getAllErrors()) {
-                    String idStr = error.getScript().id.toString();
-                    String pathStr = NekoJSPaths.ROOT.relativize(error.getScript().path).toString().replace('\\', '/');
+                    String idStr = error.getErrorId().toString();
+                    String pathStr = error.getDisplayPath();
 
-                    MutableComponent link = Component.literal("  §4▶ §c" + pathStr + " §8(第 " + error.getLineNumber() + " 行)")
+                    String countBadge = error.getOccurrenceCount() > 1 ? " §6[x" + error.getOccurrenceCount() + "]" : "";
+
+                    MutableComponent link = Component.literal("  §4▶ §c" + pathStr + " §8(第 " + error.getLineNumber() + " 行)" + countBadge)
                             .withStyle(style -> style
-                                    .withHoverEvent(new HoverEvent.ShowText(Component.literal("§e点击在全屏 UI 中查看堆栈详情")))
+                                    .withHoverEvent(new HoverEvent.ShowText(Component.literal("§c" + error.getErrorMessage() + "\n§e点击在全屏 UI 中查看堆栈详情")))
                                     .withClickEvent(new ClickEvent.RunCommand("/nekojs view_error " + idStr))
                             );
                     player.sendSystemMessage(link);
@@ -58,7 +61,6 @@ public class PlayerEventListener {
     @SubscribeEvent
     public static void onPlayerChat(ServerChatEvent event) {
         PlayerChatEventJS eventJS = new PlayerChatEventJS(event);
-
         PlayerEvents.CHAT.post(eventJS);
     }
 
@@ -66,5 +68,4 @@ public class PlayerEventListener {
     public static void onItemCrafted(PlayerEvent.ItemCraftedEvent event) {
         ItemEvents.CRAFTED.post(new ItemCraftedEventJS(event));
     }
-
 }

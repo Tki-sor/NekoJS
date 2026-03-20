@@ -15,9 +15,6 @@ public class BlockBreakEventJS implements NekoEvent {
     @Getter
     private final BlockWrapper block;
 
-    @Getter
-    private boolean cancelled;
-
     public BlockBreakEventJS(BlockEvent.BreakEvent rawEvent) {
         this.rawEvent = rawEvent;
         this.player = new PlayerWrapper(rawEvent.getPlayer());
@@ -35,7 +32,9 @@ public class BlockBreakEventJS implements NekoEvent {
 
     public void cancel() {
         rawEvent.setCanceled(true);
-        this.cancelled = true;
+    }
 
+    public boolean isCanceled() {
+        return this.rawEvent.isCanceled();
     }
 }

@@ -1,9 +1,11 @@
 package com.tkisor.nekojs.wrapper.event.item;
 
 import com.tkisor.nekojs.bindings.event.NekoEvent;
+import com.tkisor.nekojs.wrapper.entity.PlayerWrapper;
 import com.tkisor.nekojs.wrapper.item.ItemStackWrapper;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.entity.player.Player;
 import net.neoforged.neoforge.event.entity.player.ItemTooltipEvent;
 
 import java.util.List;
@@ -16,47 +18,57 @@ public class ItemTooltipEventJS implements NekoEvent {
         this.rawEvent = rawEvent;
     }
 
-    /**
-     * 获取原始的 ItemStack
-     * JS 侧调用: event.item 或 event.getItem()
-     */
     public ItemStackWrapper getItem() {
         return new ItemStackWrapper(rawEvent.getItemStack());
     }
 
-    /**
-     * 快捷获取物品的标准命名空间 ID (例如 "minecraft:apple")
-     * JS 侧调用: event.itemId
-     */
     public String getItemId() {
         return BuiltInRegistries.ITEM.getKey(rawEvent.getItemStack().getItem()).toString();
     }
 
     /**
-     * 在提示框末尾追加一行文本
-     * JS 侧调用: event.add("这是一行红字")
+     * 获取当前查看提示框的玩家
+     * JS 侧调用: event.player
      */
-    public void add(String text) {
-        rawEvent.getToolTip().add(Component.literal(text));
+    public PlayerWrapper getPlayer() {
+        Player player = rawEvent.getEntity();
+        return player != null ? new PlayerWrapper(player) : null;
     }
 
-    /**
-     * 在指定的行号插入文本 (0 是物品名称)
-     * JS 侧调用: event.insert(1, "插入到名称下面")
-     */
-    public void insert(int index, String text) {
+    public void add(Component text) {
+        rawEvent.getToolTip().add(text);
+    }
+
+    public void insert(int index, Component text) {
         List<Component> tooltip = rawEvent.getToolTip();
         if (index >= 0 && index <= tooltip.size()) {
-            tooltip.add(index, Component.literal(text));
+            tooltip.add(index, text);
         } else {
-            add(text); // 越界则追加到末尾
+            add(text);
         }
     }
 
     /**
-     * 判断玩家是否开启了高级提示框 (F3 + H)
-     * JS 侧调用: event.isAdvanced()
+     * 删除指定行号的文本
+     * JS 侧调用: event.remove(1)
      */
+    public boolean remove(int index) {
+        List<Component> tooltip = rawEvent.getToolTip();
+        if (index >= 0 && index < tooltip.size()) {
+            tooltip.remove(index);
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * 清空所有提示文本（甚至连物品名字都删了）
+     * JS 侧调用: event.clear()
+     */
+    public void clear() {
+        rawEvent.getToolTip().clear();
+    }
+
     public boolean isAdvanced() {
         return rawEvent.getFlags().isAdvanced();
     }

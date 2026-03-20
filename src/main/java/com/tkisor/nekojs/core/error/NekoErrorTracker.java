@@ -1,8 +1,12 @@
 package com.tkisor.nekojs.core.error;
 
+import com.tkisor.nekojs.core.fs.NekoJSPaths;
 import com.tkisor.nekojs.script.ScriptContainer;
 import net.minecraft.resources.Identifier;
+import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.Source;
 
+import java.nio.file.Path;
 import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -12,6 +16,42 @@ public class NekoErrorTracker {
 
     public static void record(ScriptContainer script, Throwable error) {
         ERRORS.put(script.id, new ScriptError(script, error));
+    }
+
+    public static void recordEventError(PolyglotException e) {
+        String pathStr = "未知脚本";
+        int line = -1;
+
+        if (e.getSourceLocation() != null) {
+            line = e.getSourceLocation().getStartLine();
+            Source source = e.getSourceLocation().getSource();
+
+            if (source != null) {
+                if (source.getPath() != null) {
+                    try {
+                        pathStr = NekoJSPaths.ROOT.relativize(Path.of(source.getPath())).toString().replace('\\', '/');
+                    } catch (Exception ex) {
+                        pathStr = source.getPath().replace('\\', '/'); // 兜底
+                    }
+                }
+                else if (source.getURI() != null) {
+                    pathStr = source.getURI().toString().replace(NekoJSPaths.ROOT.toUri().toString(), "").replace('\\', '/');
+                }
+                else {
+                    pathStr = source.getName();
+                }
+            }
+        }
+
+        String uniqueHashInput = pathStr + "_" + line + "_" + e.getMessage();
+        String safeHash = Integer.toHexString(uniqueHashInput.hashCode());
+        Identifier runtimeId = Identifier.fromNamespaceAndPath("nekojs", "rt_" + safeHash);
+
+        if (ERRORS.containsKey(runtimeId)) {
+            ERRORS.get(runtimeId).incrementOccurrence();
+        } else {
+            ERRORS.put(runtimeId, new ScriptError(runtimeId, pathStr, e));
+        }
     }
 
     public static void clear(Identifier scriptId) {
