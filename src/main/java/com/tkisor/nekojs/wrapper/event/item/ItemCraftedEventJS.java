@@ -1,12 +1,11 @@
 package com.tkisor.nekojs.wrapper.event.item;
 
-import com.tkisor.nekojs.bindings.event.NekoEvent;
 import com.tkisor.nekojs.wrapper.entity.PlayerWrapper;
 import com.tkisor.nekojs.wrapper.item.ItemStackWrapper;
 import net.minecraft.world.Container;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 
-public class ItemCraftedEventJS implements NekoEvent {
+public class ItemCraftedEventJS {
 
     private final PlayerEvent.ItemCraftedEvent rawEvent;
 

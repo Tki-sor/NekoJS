@@ -1,6 +1,5 @@
 package com.tkisor.nekojs.wrapper.event.registry;
 
-import com.tkisor.nekojs.bindings.event.NekoEvent;
 import com.tkisor.nekojs.wrapper.registry.BlockBuilderJS;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
@@ -13,7 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
-public class BlockRegistryEventJS implements NekoEvent {
+public class BlockRegistryEventJS {
     public static final Map<Identifier, Block> PENDING_BLOCK_ITEMS = new HashMap<>();
 
     private final RegisterEvent rawEvent;

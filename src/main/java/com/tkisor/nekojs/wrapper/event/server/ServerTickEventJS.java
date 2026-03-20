@@ -1,11 +1,10 @@
 package com.tkisor.nekojs.wrapper.event.server;
 
-import com.tkisor.nekojs.bindings.event.NekoEvent;
 import lombok.Getter;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import net.minecraft.server.MinecraftServer;
 
-public class ServerTickEventJS implements NekoEvent {
+public class ServerTickEventJS {
 
     private final ServerTickEvent rawEvent;
     @Getter

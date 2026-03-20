@@ -1,6 +1,5 @@
 package com.tkisor.nekojs.wrapper.event.item;
 
-import com.tkisor.nekojs.bindings.event.NekoEvent;
 import com.tkisor.nekojs.wrapper.entity.PlayerWrapper;
 import com.tkisor.nekojs.wrapper.item.ItemStackWrapper;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -10,7 +9,7 @@ import net.neoforged.neoforge.event.entity.player.ItemTooltipEvent;
 
 import java.util.List;
 
-public class ItemTooltipEventJS implements NekoEvent {
+public class ItemTooltipEventJS {
 
     private final ItemTooltipEvent rawEvent;
 

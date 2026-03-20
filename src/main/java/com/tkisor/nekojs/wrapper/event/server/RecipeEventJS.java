@@ -4,7 +4,6 @@ import com.google.gson.*;
 import com.mojang.serialization.JsonOps;
 import com.tkisor.nekojs.NekoJS;
 import com.tkisor.nekojs.api.recipe.RecipeFilter;
-import com.tkisor.nekojs.bindings.event.NekoEvent;
 import com.tkisor.nekojs.wrapper.item.ItemStackWrapper;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -19,7 +18,7 @@ import org.graalvm.polyglot.Value;
 import java.util.*;
 import java.util.stream.Collectors;
 
-public class RecipeEventJS implements NekoEvent {
+public class RecipeEventJS {
 
     private final Map<Identifier, JsonElement> jsons;
     private final HolderLookup.Provider registries;

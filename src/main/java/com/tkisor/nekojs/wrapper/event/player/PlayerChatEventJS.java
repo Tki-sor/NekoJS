@@ -1,11 +1,10 @@
 package com.tkisor.nekojs.wrapper.event.player;
 
-import com.tkisor.nekojs.bindings.event.NekoEvent;
 import com.tkisor.nekojs.wrapper.entity.PlayerWrapper;
 import net.minecraft.network.chat.Component;
 import net.neoforged.neoforge.event.ServerChatEvent;
 
-public class PlayerChatEventJS implements NekoEvent {
+public class PlayerChatEventJS {
 
     private final ServerChatEvent rawEvent;
 
@@ -37,19 +36,4 @@ public class PlayerChatEventJS implements NekoEvent {
         rawEvent.setMessage(Component.literal(newMessage));
     }
 
-    /**
-     * 撤回/取消这条消息（其他玩家将看不到）
-     * JS 侧调用: event.cancel()
-     */
-    public void cancel() {
-        rawEvent.setCanceled(true);
-    }
-
-    /**
-     * 检查事件是否已经被取消
-     * JS 侧调用: event.isCanceled()
-     */
-    public boolean isCanceled() {
-        return rawEvent.isCanceled();
-    }
 }
