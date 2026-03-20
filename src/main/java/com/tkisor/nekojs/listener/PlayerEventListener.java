@@ -52,7 +52,7 @@ public class PlayerEventListener {
     @SubscribeEvent
     public static void onItemRightClick(PlayerInteractEvent.RightClickItem event) {
         ItemRightClickEventJS eventJS = new ItemRightClickEventJS(event);
-        ItemEvents.RIGHT_CLICKED.post(eventJS.getItem().getId(), eventJS);
+        ItemEvents.RIGHT_CLICKED.post(eventJS, eventJS.getItem().getId());
     }
 
     @SubscribeEvent
