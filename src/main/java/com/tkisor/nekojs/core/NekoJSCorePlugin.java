@@ -23,6 +23,7 @@ public class NekoJSCorePlugin implements NekoJSPlugin {
         registry.register(EntityEvents.GROUP);
         registry.register(CommandEvents.GROUP);
         registry.register(RegistryEvents.GROUP);
+        registry.register(LevelEvents.GROUP);
     }
 
     @Override

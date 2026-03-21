@@ -1,10 +1,11 @@
 package com.tkisor.nekojs.wrapper.event.player;
 
+import com.tkisor.nekojs.api.event.NekoCancellableEvent;
 import com.tkisor.nekojs.wrapper.entity.PlayerWrapper;
 import net.minecraft.network.chat.Component;
 import net.neoforged.neoforge.event.ServerChatEvent;
 
-public class PlayerChatEventJS {
+public class PlayerChatEventJS implements NekoCancellableEvent {
 
     private final ServerChatEvent rawEvent;
 

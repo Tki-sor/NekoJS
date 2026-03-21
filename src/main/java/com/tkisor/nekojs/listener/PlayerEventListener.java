@@ -10,6 +10,8 @@ import com.tkisor.nekojs.wrapper.event.item.ItemCraftedEventJS;
 import com.tkisor.nekojs.wrapper.event.item.ItemRightClickEventJS;
 import com.tkisor.nekojs.wrapper.event.player.PlayerChatEventJS;
 import com.tkisor.nekojs.wrapper.event.player.PlayerLoggedInEventJS;
+import com.tkisor.nekojs.wrapper.event.player.PlayerRespawnEventJS;
+import com.tkisor.nekojs.wrapper.event.player.PlayerTickEventJS;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
@@ -21,6 +23,7 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.ServerChatEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
+import net.neoforged.neoforge.event.tick.PlayerTickEvent;
 
 @EventBusSubscriber(modid = NekoJS.MODID)
 public class PlayerEventListener {
@@ -67,5 +70,15 @@ public class PlayerEventListener {
     @SubscribeEvent
     public static void onItemCrafted(PlayerEvent.ItemCraftedEvent event) {
         ItemEvents.CRAFTED.post(new ItemCraftedEventJS(event));
+    }
+
+    @SubscribeEvent
+    public static void onPlayerTick(PlayerTickEvent.Post event) {
+        PlayerEvents.TICK.post(new PlayerTickEventJS(event));
+    }
+
+    @SubscribeEvent
+    public static void onPlayerRespawn(PlayerEvent.PlayerRespawnEvent event) {
+        PlayerEvents.RESPAWNED.post(new PlayerRespawnEventJS(event));
     }
 }

@@ -3,6 +3,7 @@ package com.tkisor.nekojs.bindings.event;
 import com.tkisor.nekojs.api.event.EventBusJS;
 import com.tkisor.nekojs.api.event.EventGroup;
 import com.tkisor.nekojs.utils.event.dispatch.DispatchKey;
+import com.tkisor.nekojs.wrapper.event.item.ItemConsumedEventJS;
 import com.tkisor.nekojs.wrapper.event.item.ItemCraftedEventJS;
 import com.tkisor.nekojs.wrapper.event.item.ItemRightClickEventJS;
 import com.tkisor.nekojs.wrapper.event.item.ItemTooltipEventJS;
@@ -16,4 +17,6 @@ public interface ItemEvents {
             GROUP.client("tooltip", ItemTooltipEventJS.class);
     EventBusJS<ItemCraftedEventJS, Void> CRAFTED =
             GROUP.server("crafted", ItemCraftedEventJS.class);
+    EventBusJS<ItemConsumedEventJS, String> CONSUMED =
+            GROUP.server("consumed", ItemConsumedEventJS.class, DispatchKey.string());
 }

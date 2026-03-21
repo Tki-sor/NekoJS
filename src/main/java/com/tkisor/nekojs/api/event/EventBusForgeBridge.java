@@ -68,7 +68,8 @@ public class EventBusForgeBridge {
         Objects.requireNonNull(bus, "EventBus<E> bus == null");
         Objects.requireNonNull(transformer, "Function<E_FORGE, E> transformer == null");
         Consumer<E_FORGE> listener;
-        if (bus instanceof CancellableEventBus<E> && ICancellableEvent.class.isAssignableFrom(bus.eventType())) {
+        // 这个方法看起来是用来将NekoJS事件转换为Forge事件的？isAssignableFrom(bus.eventType())无法正确拦截事件
+        if (bus instanceof CancellableEventBus<E> && ICancellableEvent.class.isAssignableFrom(eventType)) {
             listener = e -> {
                 if (bus.post(transformer.apply(e))) {
                     ((ICancellableEvent) e).setCanceled(true);
