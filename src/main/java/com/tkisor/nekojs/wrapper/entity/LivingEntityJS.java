@@ -1,6 +1,6 @@
 package com.tkisor.nekojs.wrapper.entity;
 
-import com.tkisor.nekojs.wrapper.item.ItemStackWrapper;
+import com.tkisor.nekojs.wrapper.item.ItemStackJS;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.effect.MobEffect;
@@ -8,9 +8,9 @@ import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 
-public class LivingEntityWrapper extends EntityWrapper {
+public class LivingEntityJS extends EntityJS {
 
-    public LivingEntityWrapper(LivingEntity entity) {
+    public LivingEntityJS(LivingEntity entity) {
         super(entity);
     }
 
@@ -60,24 +60,24 @@ public class LivingEntityWrapper extends EntityWrapper {
         getLiving().removeAllEffects();
     }
 
-    public ItemStackWrapper getOffHandItem() {
-        return new ItemStackWrapper(getLiving().getOffhandItem());
+    public ItemStackJS getOffHandItem() {
+        return new ItemStackJS(getLiving().getOffhandItem());
     }
 
-    public ItemStackWrapper getHeadArmor() {
-        return new ItemStackWrapper(getLiving().getItemBySlot(EquipmentSlot.HEAD));
+    public ItemStackJS getHeadArmor() {
+        return new ItemStackJS(getLiving().getItemBySlot(EquipmentSlot.HEAD));
     }
 
-    public ItemStackWrapper getChestArmor() {
-        return new ItemStackWrapper(getLiving().getItemBySlot(EquipmentSlot.CHEST));
+    public ItemStackJS getChestArmor() {
+        return new ItemStackJS(getLiving().getItemBySlot(EquipmentSlot.CHEST));
     }
 
-    public ItemStackWrapper getLegsArmor() {
-        return new ItemStackWrapper(getLiving().getItemBySlot(EquipmentSlot.LEGS));
+    public ItemStackJS getLegsArmor() {
+        return new ItemStackJS(getLiving().getItemBySlot(EquipmentSlot.LEGS));
     }
 
-    public ItemStackWrapper getFeetArmor() {
-        return new ItemStackWrapper(getLiving().getItemBySlot(EquipmentSlot.FEET));
+    public ItemStackJS getFeetArmor() {
+        return new ItemStackJS(getLiving().getItemBySlot(EquipmentSlot.FEET));
     }
 
     @Override

@@ -23,6 +23,7 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.config.ModConfig;
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
 import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.neoforged.fml.loading.FMLEnvironment;
@@ -51,6 +52,7 @@ public class NekoJS {
         SCRIPT_MANAGER = new NekoJSScriptManager();
         NekoJSPaths.initFoldersOnly();
         ScriptBootstrap.generateDefaultScripts();
+        NekoJSPaths.initFoldersOnly();
 
         registerPlugins();
 

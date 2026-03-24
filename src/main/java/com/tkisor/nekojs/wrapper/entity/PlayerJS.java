@@ -1,6 +1,6 @@
 package com.tkisor.nekojs.wrapper.entity;
 
-import com.tkisor.nekojs.wrapper.item.ItemStackWrapper;
+import com.tkisor.nekojs.wrapper.item.ItemStackJS;
 import net.minecraft.commands.Commands;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
@@ -12,9 +12,9 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
-public class PlayerWrapper extends LivingEntityWrapper {
+public class PlayerJS extends LivingEntityJS {
 
-    public PlayerWrapper(Player player) {
+    public PlayerJS(Player player) {
         super(player);
     }
 
@@ -63,8 +63,8 @@ public class PlayerWrapper extends LivingEntityWrapper {
         return getPlayer().isCreative();
     }
 
-    public ItemStackWrapper getMainHandItem() {
-        return new ItemStackWrapper(getPlayer().getMainHandItem());
+    public ItemStackJS getMainHandItem() {
+        return new ItemStackJS(getPlayer().getMainHandItem());
     }
 
     public void give(ItemStack item) {

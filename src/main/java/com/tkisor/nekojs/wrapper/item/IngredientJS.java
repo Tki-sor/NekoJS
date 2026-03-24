@@ -16,24 +16,24 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-public class IngredientWrapper implements NekoWrapper<Ingredient> {
+public class IngredientJS implements NekoWrapper<Ingredient> {
 
     private final List<String> rawIds = new ArrayList<>();
 
-    public IngredientWrapper() {}
+    public IngredientJS() {}
 
-    public IngredientWrapper(String... ids) {
+    public IngredientJS(String... ids) {
         for (String id : ids) {
             this.rawIds.add(formatId(id));
         }
     }
 
-    public IngredientWrapper or(String id) {
+    public IngredientJS or(String id) {
         this.rawIds.add(formatId(id));
         return this;
     }
 
-    public IngredientWrapper or(IngredientWrapper other) {
+    public IngredientJS or(IngredientJS other) {
         this.rawIds.addAll(other.rawIds);
         return this;
     }
@@ -61,7 +61,7 @@ public class IngredientWrapper implements NekoWrapper<Ingredient> {
             Identifier loc = Identifier.tryParse(cleanId);
 
             if (loc == null) {
-                NekoJS.LOGGER.warn("[IngredientWrapper] 无法解析的材料 ID 格式: {}", rawId);
+                NekoJS.LOGGER.warn("[IngredientJS] 无法解析的材料 ID 格式: {}", rawId);
                 continue;
             }
 
@@ -72,20 +72,20 @@ public class IngredientWrapper implements NekoWrapper<Ingredient> {
                 if (tagHolders.isPresent()) {
                     tagHolders.get().forEach(allHolders::add);
                 } else {
-                    NekoJS.LOGGER.warn("[IngredientWrapper] 找不到物品标签: {}，请检查是否拼写错误！", rawId);
+                    NekoJS.LOGGER.warn("[IngredientJS] 找不到物品标签: {}，请检查是否拼写错误！", rawId);
                 }
             } else {
                 Item item = BuiltInRegistries.ITEM.getValue(loc);
                 if (item != Items.AIR) {
                     allHolders.add(item.builtInRegistryHolder());
                 } else {
-                    NekoJS.LOGGER.warn("[IngredientWrapper] 找不到物品: {}，请检查是否拼写错误！", rawId);
+                    NekoJS.LOGGER.warn("[IngredientJS] 找不到物品: {}，请检查是否拼写错误！", rawId);
                 }
             }
         }
 
         if (allHolders.isEmpty()) {
-            NekoJS.LOGGER.warn("[IngredientWrapper] 该材料对象最终为空，将使用屏障(Barrier)代替。");
+            NekoJS.LOGGER.warn("[IngredientJS] 该材料对象最终为空，将使用屏障(Barrier)代替。");
             return Ingredient.of(Items.BARRIER);
         }
 

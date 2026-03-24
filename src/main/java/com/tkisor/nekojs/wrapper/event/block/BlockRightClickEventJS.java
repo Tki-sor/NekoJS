@@ -1,10 +1,9 @@
 package com.tkisor.nekojs.wrapper.event.block;
 
 import com.tkisor.nekojs.api.event.NekoCancellableEvent;
-import com.tkisor.nekojs.bindings.event.NekoEvent;
-import com.tkisor.nekojs.wrapper.block.BlockWrapper;
-import com.tkisor.nekojs.wrapper.entity.PlayerWrapper;
-import com.tkisor.nekojs.wrapper.item.ItemStackWrapper;
+import com.tkisor.nekojs.wrapper.block.BlockJS;
+import com.tkisor.nekojs.wrapper.entity.PlayerJS;
+import com.tkisor.nekojs.wrapper.item.ItemStackJS;
 import lombok.Getter;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 import net.minecraft.core.BlockPos;
@@ -15,25 +14,25 @@ public class BlockRightClickEventJS implements NekoCancellableEvent {
     private final PlayerInteractEvent.RightClickBlock rawEvent;
 
     @Getter
-    private final PlayerWrapper player;
+    private final PlayerJS player;
 
     @Getter
-    private final BlockWrapper block;
+    private final BlockJS block;
 
     @Getter
-    private final ItemStackWrapper item;
+    private final ItemStackJS item;
 
     public BlockRightClickEventJS(PlayerInteractEvent.RightClickBlock rawEvent) {
         this.rawEvent = rawEvent;
 
-        this.player = new PlayerWrapper(rawEvent.getEntity());
+        this.player = new PlayerJS(rawEvent.getEntity());
 
-        this.item = new ItemStackWrapper(rawEvent.getItemStack());
+        this.item = new ItemStackJS(rawEvent.getItemStack());
 
         Level level = rawEvent.getLevel();
         BlockPos pos = rawEvent.getPos();
         BlockState state = level.getBlockState(pos);
-        this.block = new BlockWrapper(level, pos, state);
+        this.block = new BlockJS(level, pos, state);
     }
 
     public String getBlockId() {

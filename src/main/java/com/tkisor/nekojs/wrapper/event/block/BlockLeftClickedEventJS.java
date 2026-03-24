@@ -1,8 +1,8 @@
 package com.tkisor.nekojs.wrapper.event.block;
 
 import com.tkisor.nekojs.api.event.NekoCancellableEvent;
-import com.tkisor.nekojs.wrapper.block.BlockWrapper;
-import com.tkisor.nekojs.wrapper.entity.PlayerWrapper;
+import com.tkisor.nekojs.wrapper.block.BlockJS;
+import com.tkisor.nekojs.wrapper.entity.PlayerJS;
 import lombok.Getter;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -19,7 +19,7 @@ public class BlockLeftClickedEventJS implements NekoCancellableEvent {
      *  JS 侧: event.block
      */
     @Getter
-    private final BlockWrapper block;
+    private final BlockJS block;
 
     public BlockLeftClickedEventJS(PlayerInteractEvent.LeftClickBlock rawEvent) {
         this.rawEvent = rawEvent;
@@ -27,15 +27,15 @@ public class BlockLeftClickedEventJS implements NekoCancellableEvent {
         Level level = rawEvent.getLevel();
         BlockPos pos = rawEvent.getPos();
         BlockState state = level.getBlockState(pos);
-        this.block = new BlockWrapper(level, pos, state);
+        this.block = new BlockJS(level, pos, state);
     }
 
     /**
      * 获取点击的玩家
      * JS 侧: event.player
      */
-    public PlayerWrapper getPlayer() {
-        return new PlayerWrapper(rawEvent.getEntity());
+    public PlayerJS getPlayer() {
+        return new PlayerJS(rawEvent.getEntity());
     }
 
     public String getBlockId() {

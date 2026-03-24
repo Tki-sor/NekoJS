@@ -1,10 +1,9 @@
 package com.tkisor.nekojs.wrapper.event.block;
 
 import com.tkisor.nekojs.api.event.NekoCancellableEvent;
-import com.tkisor.nekojs.bindings.event.NekoEvent;
-import com.tkisor.nekojs.wrapper.block.BlockWrapper;
-import com.tkisor.nekojs.wrapper.entity.EntityWrapper;
-import com.tkisor.nekojs.wrapper.entity.PlayerWrapper;
+import com.tkisor.nekojs.wrapper.block.BlockJS;
+import com.tkisor.nekojs.wrapper.entity.EntityJS;
+import com.tkisor.nekojs.wrapper.entity.PlayerJS;
 import lombok.Getter;
 import net.minecraft.world.entity.player.Player;
 import net.neoforged.neoforge.event.level.BlockEvent;
@@ -13,17 +12,17 @@ public class BlockPlaceEventJS implements NekoCancellableEvent {
     private final BlockEvent.EntityPlaceEvent rawEvent;
 
     @Getter
-    private final EntityWrapper entity;
+    private final EntityJS entity;
 
     @Getter
-    private final BlockWrapper block;
+    private final BlockJS block;
 
     public BlockPlaceEventJS(BlockEvent.EntityPlaceEvent rawEvent) {
         this.rawEvent = rawEvent;
 
-        this.entity = EntityWrapper.of(rawEvent.getEntity());
+        this.entity = EntityJS.of(rawEvent.getEntity());
 
-        this.block = new BlockWrapper(
+        this.block = new BlockJS(
                 rawEvent.getLevel(),
                 rawEvent.getPos(),
                 rawEvent.getPlacedBlock()
@@ -38,8 +37,8 @@ public class BlockPlaceEventJS implements NekoCancellableEvent {
         return rawEvent.getEntity() instanceof Player;
     }
 
-    public PlayerWrapper getPlayer() {
-        return entity instanceof PlayerWrapper pw ? pw : null;
+    public PlayerJS getPlayer() {
+        return entity instanceof PlayerJS pw ? pw : null;
     }
 
 }

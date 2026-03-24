@@ -8,12 +8,18 @@ import net.neoforged.fml.loading.FMLPaths;
 import net.neoforged.neoforge.common.NeoForge;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Properties;
 
 public final class NekoJSPaths {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
+
+    // 🌟 引擎核心配置状态：全局静态暴漏，随时读取
+    public static boolean disableStrictSandbox = false;
 
     /* ================= Base ================= */
     public static final Path GAME_DIR = FMLPaths.GAMEDIR.get().normalize().toAbsolutePath();
@@ -32,6 +38,8 @@ public final class NekoJSPaths {
     /* ================= Config & DX ================= */
     public static final Path CONFIG = ROOT.resolve("config");
     public static final Path README = ROOT.resolve("README.txt");
+    // 🌟 引擎配置文件路径 (nekojs/config/engine.properties)
+    public static final Path ENGINE_CONFIG = CONFIG.resolve("engine.properties");
 
     /* ================= Initialization ================= */
     public static void initFoldersOnly() {
@@ -45,6 +53,8 @@ public final class NekoJSPaths {
         ensureDir(NODE_MODULES);
 
         createReadme();
+        // 🌟 初始化文件夹的同时，立即加载引擎配置！
+        loadEngineConfig();
     }
 
     /* ================= Utilities ================= */
@@ -55,6 +65,28 @@ public final class NekoJSPaths {
             }
         } catch (Exception e) {
             NekoJS.LOGGER.error("[NekoJS] 无法创建目录: {}", dir, e);
+        }
+    }
+
+    // 🌟 新增：早期配置文件读取逻辑
+    private static void loadEngineConfig() {
+        Properties props = new Properties();
+        try {
+            if (Files.exists(ENGINE_CONFIG)) {
+                try (InputStream is = Files.newInputStream(ENGINE_CONFIG)) {
+                    props.load(is);
+                    disableStrictSandbox = Boolean.parseBoolean(props.getProperty("disableStrictSandbox", "false"));
+                }
+            } else {
+                props.setProperty("disableStrictSandbox", "false");
+                try (OutputStream os = Files.newOutputStream(ENGINE_CONFIG)) {
+                    props.store(os, "NekoJS Engine Core Configuration\n" +
+                            "# WARNING: Setting disableStrictSandbox to true will allow scripts to access dangerous Java classes (e.g., IO, Reflection).");
+                }
+            }
+            NekoJS.LOGGER.info("[NekoJS] 引擎配置加载完毕。沙盒禁用状态: {}", disableStrictSandbox);
+        } catch (Exception e) {
+            NekoJS.LOGGER.error("[NekoJS] 无法加载 engine.properties", e);
         }
     }
 

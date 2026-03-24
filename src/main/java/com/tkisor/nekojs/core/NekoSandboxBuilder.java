@@ -91,6 +91,7 @@ public final class NekoSandboxBuilder {
                 .allowAllImplementations(true);
 
         NekoJSTypeAdapters.all().forEach(adapter -> registerTypeAdapter(hostBuilder, adapter));
+        boolean isSandboxDisabled = NekoJSPaths.disableStrictSandbox;
 
         Logger logger = type.logger();
         OutputStream outStream = new LoggerStream(logger, false);
@@ -103,7 +104,10 @@ public final class NekoSandboxBuilder {
                 .allowHostAccess(hostBuilder.build())
                 .allowIO(IOAccess.newBuilder().fileSystem(new NekoJSFileSystem(NekoJSPaths.ROOT)).build())
                 .allowCreateThread(true)
-                .allowHostClassLookup(c -> CLASS_BLACKLIST.stream().noneMatch(c::startsWith))
+                .allowHostClassLookup(c -> {
+                    if (isSandboxDisabled) return true;
+                    return CLASS_BLACKLIST.stream().noneMatch(c::startsWith);
+                })
                 .option("engine.WarnInterpreterOnly", "false")
                 .option("js.foreign-object-prototype", "true")
                 .option("js.nashorn-compat", "true")

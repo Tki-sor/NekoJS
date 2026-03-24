@@ -12,10 +12,10 @@ import net.minecraft.world.item.enchantment.ItemEnchantments;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class ItemStackWrapper implements NekoWrapper<ItemStack> {
+public class ItemStackJS implements NekoWrapper<ItemStack> {
     private final ItemStack rawStack;
 
-    public ItemStackWrapper(ItemStack rawStack) {
+    public ItemStackJS(ItemStack rawStack) {
         this.rawStack = rawStack == null ? ItemStack.EMPTY : rawStack;
     }
 
@@ -35,7 +35,7 @@ public class ItemStackWrapper implements NekoWrapper<ItemStack> {
         rawStack.setCount(count);
     }
 
-    public ItemStackWrapper withCount(int count) {
+    public ItemStackJS withCount(int count) {
         rawStack.setCount(count);
         return this;
     }
@@ -48,7 +48,7 @@ public class ItemStackWrapper implements NekoWrapper<ItemStack> {
         rawStack.set(DataComponents.CUSTOM_NAME, Component.literal(name));
     }
 
-    public ItemStackWrapper withName(String name) {
+    public ItemStackJS withName(String name) {
         this.setName(name);
         return this;
     }
@@ -68,7 +68,7 @@ public class ItemStackWrapper implements NekoWrapper<ItemStack> {
         rawStack.set(DataComponents.LORE, new ItemLore(components));
     }
 
-    public ItemStackWrapper withLore(List<String> lines) {
+    public ItemStackJS withLore(List<String> lines) {
         this.setLore(lines);
         return this;
     }
@@ -86,7 +86,7 @@ public class ItemStackWrapper implements NekoWrapper<ItemStack> {
         }
     }
 
-    public ItemStackWrapper withEnchanted(boolean enchanted) {
+    public ItemStackJS withEnchanted(boolean enchanted) {
         this.setEnchanted(enchanted);
         return this;
     }
@@ -103,7 +103,7 @@ public class ItemStackWrapper implements NekoWrapper<ItemStack> {
         }
     }
 
-    public ItemStackWrapper withUnbreakable(boolean unbreakable) {
+    public ItemStackJS withUnbreakable(boolean unbreakable) {
         this.setUnbreakable(unbreakable);
         return this;
     }
@@ -116,7 +116,7 @@ public class ItemStackWrapper implements NekoWrapper<ItemStack> {
         rawStack.setDamageValue(damage);
     }
 
-    public ItemStackWrapper withDamage(int damage) {
+    public ItemStackJS withDamage(int damage) {
         rawStack.setDamageValue(damage);
         return this;
     }

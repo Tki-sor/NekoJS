@@ -1,7 +1,7 @@
 package com.tkisor.nekojs.wrapper.event.item;
 
-import com.tkisor.nekojs.wrapper.entity.PlayerWrapper;
-import com.tkisor.nekojs.wrapper.item.ItemStackWrapper;
+import com.tkisor.nekojs.wrapper.entity.PlayerJS;
+import com.tkisor.nekojs.wrapper.item.ItemStackJS;
 import net.minecraft.world.Container;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 
@@ -17,16 +17,16 @@ public class ItemCraftedEventJS {
      * 获取合成该物品的玩家
      * JS 侧: event.player
      */
-    public PlayerWrapper getPlayer() {
-        return new PlayerWrapper(rawEvent.getEntity());
+    public PlayerJS getPlayer() {
+        return new PlayerJS(rawEvent.getEntity());
     }
 
     /**
      * 获取合成出来的物品堆 (可以修改数量或 NBT)
      * JS 侧: event.item
      */
-    public ItemStackWrapper getItem() {
-        return new ItemStackWrapper(rawEvent.getCrafting());
+    public ItemStackJS getItem() {
+        return new ItemStackJS(rawEvent.getCrafting());
     }
 
     /**

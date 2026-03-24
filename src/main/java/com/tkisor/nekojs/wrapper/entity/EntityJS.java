@@ -13,20 +13,20 @@ import net.minecraft.world.phys.Vec3;
 
 import java.util.Set;
 
-public class EntityWrapper implements NekoWrapper<Entity> {
+public class EntityJS implements NekoWrapper<Entity> {
     @Getter
     protected final Entity raw;
 
-    public EntityWrapper(Entity entity) {
+    public EntityJS(Entity entity) {
         this.raw = entity;
     }
 
-    public static EntityWrapper of(Entity entity) {
+    public static EntityJS of(Entity entity) {
         return switch (entity) {
             case null -> null;
-            case Player p -> new PlayerWrapper(p);
-            case LivingEntity le -> new LivingEntityWrapper(le);
-            default -> new EntityWrapper(entity);
+            case Player p -> new PlayerJS(p);
+            case LivingEntity le -> new LivingEntityJS(le);
+            default -> new EntityJS(entity);
         };
     }
 

@@ -20,7 +20,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
-public class BlockWrapper implements NekoWrapper<BlockState> {
+public class BlockJS implements NekoWrapper<BlockState> {
 
     @Getter
     private final LevelAccessor level;
@@ -28,7 +28,7 @@ public class BlockWrapper implements NekoWrapper<BlockState> {
     private final BlockPos pos;
     private BlockState state;
 
-    public BlockWrapper(LevelAccessor level, BlockPos pos, BlockState state) {
+    public BlockJS(LevelAccessor level, BlockPos pos, BlockState state) {
         this.level = level;
         this.pos = pos;
         this.state = state;
@@ -67,38 +67,38 @@ public class BlockWrapper implements NekoWrapper<BlockState> {
         return level.getBlockEntity(pos);
     }
 
-    public BlockWrapper offset(int x, int y, int z) {
+    public BlockJS offset(int x, int y, int z) {
         if (level == null) return this;
         BlockPos newPos = pos.offset(x, y, z);
-        return new BlockWrapper(level, newPos, level.getBlockState(newPos));
+        return new BlockJS(level, newPos, level.getBlockState(newPos));
     }
 
-    public BlockWrapper up() {
+    public BlockJS up() {
         return offset(0, 1, 0);
     }
 
-    public BlockWrapper down() {
+    public BlockJS down() {
         return offset(0, -1, 0);
     }
 
-    public BlockWrapper north() {
+    public BlockJS north() {
         return offset(0, 0, -1);
     }
 
-    public BlockWrapper south() {
+    public BlockJS south() {
         return offset(0, 0, 1);
     }
 
-    public BlockWrapper west() {
+    public BlockJS west() {
         return offset(-1, 0, 0);
     }
 
-    public BlockWrapper east() {
+    public BlockJS east() {
         return offset(1, 0, 0);
     }
 
     // 获取相邻方块，JS 侧：block.relative("up")
-    public BlockWrapper relative(String direction) {
+    public BlockJS relative(String direction) {
         Direction dir = Direction.byName(direction.toLowerCase());
         if (dir == null) return this;
         return offset(dir.getStepX(), dir.getStepY(), dir.getStepZ());
@@ -125,7 +125,7 @@ public class BlockWrapper implements NekoWrapper<BlockState> {
      * JS 侧调用：block.with("facing", "north").with("lit", "true")
      * 支持链式调用，修改属性并立即更新到世界中！
      */
-    public BlockWrapper with(String propertyName, String value) {
+    public BlockJS with(String propertyName, String value) {
         if (level == null) return this;
         for (Property<?> prop : state.getProperties()) {
             if (prop.getName().equals(propertyName)) {

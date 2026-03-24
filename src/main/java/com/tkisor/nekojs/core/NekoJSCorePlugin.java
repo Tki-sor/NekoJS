@@ -39,7 +39,6 @@ public class NekoJSCorePlugin implements NekoJSPlugin {
     @Override
     public void registerAdapters(JSTypeAdapterRegister registry) {
         registry.register(new ItemStackAdapter());
-        registry.register(new ItemStackWrapperAdapter());
         registry.register(new IngredientAdapter());
         registry.register(new IdentifierAdapter());
         registry.register(new RecipeFilterAdapter());

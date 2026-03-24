@@ -1,19 +1,17 @@
 package com.tkisor.nekojs.bindings.entity;
 
 import com.tkisor.nekojs.bindings.level.NekoLevelEvent;
-import com.tkisor.nekojs.wrapper.entity.EntityWrapper;
-import com.tkisor.nekojs.wrapper.entity.PlayerWrapper;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.player.Player;
+import com.tkisor.nekojs.wrapper.entity.EntityJS;
+import com.tkisor.nekojs.wrapper.entity.PlayerJS;
 import net.minecraft.world.level.Level;
 import org.jetbrains.annotations.Nullable;
 
 public interface NekoEntityEvent extends NekoLevelEvent {
-    EntityWrapper getEntity();
+    EntityJS getEntity();
 
     @Nullable
-    default PlayerWrapper getPlayer() {
-        return getEntity() instanceof PlayerWrapper p ? p : null;
+    default PlayerJS getPlayer() {
+        return getEntity() instanceof PlayerJS p ? p : null;
     }
 
     @Override

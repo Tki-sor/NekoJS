@@ -1,12 +1,12 @@
 package com.tkisor.nekojs.wrapper.entity.client;
 
-import com.tkisor.nekojs.wrapper.entity.PlayerWrapper;
+import com.tkisor.nekojs.wrapper.entity.PlayerJS;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.world.InteractionHand;
 
-public class LocalPlayerWrapper extends PlayerWrapper {
+public class LocalPlayerJS extends PlayerJS {
 
-    public LocalPlayerWrapper(LocalPlayer player) {
+    public LocalPlayerJS(LocalPlayer player) {
         super(player);
     }
 

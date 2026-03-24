@@ -6,7 +6,7 @@ import com.mojang.brigadier.arguments.FloatArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
-import com.tkisor.nekojs.wrapper.entity.PlayerWrapper;
+import com.tkisor.nekojs.wrapper.entity.PlayerJS;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
@@ -23,9 +23,9 @@ public class CommandContextJS {
         return rawContext.getSource().getEntity() instanceof ServerPlayer;
     }
 
-    public PlayerWrapper getPlayer() {
+    public PlayerJS getPlayer() {
         if (rawContext.getSource().getEntity() instanceof ServerPlayer serverPlayer) {
-            return new PlayerWrapper(serverPlayer);
+            return new PlayerJS(serverPlayer);
         }
         return null;
     }

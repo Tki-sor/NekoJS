@@ -1,17 +1,18 @@
 package com.tkisor.nekojs.js.type_adapter;
 
 import com.tkisor.nekojs.api.JSTypeAdapter;
+import com.tkisor.nekojs.wrapper.item.ItemStackJS;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
 import org.graalvm.polyglot.Value;
 
 import java.util.Optional;
 
 public final class ItemStackAdapter implements JSTypeAdapter<ItemStack> {
+
     @Override
     public Class<ItemStack> getTargetClass() {
         return ItemStack.class;
@@ -19,12 +20,42 @@ public final class ItemStackAdapter implements JSTypeAdapter<ItemStack> {
 
     @Override
     public boolean canConvert(Value value) {
-        return value.isString();
+        if (value.isNull()) {
+            return true;
+        }
+        if (value.isString()) {
+            return true;
+        }
+        if (value.isHostObject()) {
+            Object obj = value.asHostObject();
+            return obj instanceof ItemStackJS || obj instanceof ItemStack;
+        }
+        return false;
     }
 
     @Override
     public ItemStack convert(Value value) {
-        return ItemStackAdapter.stringToItemStack(value.asString());
+        if (value.isNull()) {
+            return ItemStack.EMPTY;
+        }
+
+        if (value.isString()) {
+            return stringToItemStack(value.asString());
+        }
+
+        if (value.isHostObject()) {
+            Object obj = value.asHostObject();
+
+            if (obj instanceof ItemStackJS wrapper) {
+                return wrapper.unwrap();
+            }
+
+            if (obj instanceof ItemStack stack) {
+                return stack;
+            }
+        }
+
+        return ItemStack.EMPTY;
     }
 
     /**
@@ -32,7 +63,7 @@ public final class ItemStackAdapter implements JSTypeAdapter<ItemStack> {
      * 支持 "Nx item_id" 格式（例如 "2x minecraft:stick"），默认数量为 1。
      */
     static ItemStack stringToItemStack(String str) {
-        if (str == null || str.isEmpty()) return new ItemStack(Items.AIR);
+        if (str == null || str.trim().isEmpty()) return ItemStack.EMPTY;
 
         int count = 1;
         str = str.trim();
@@ -54,4 +85,3 @@ public final class ItemStackAdapter implements JSTypeAdapter<ItemStack> {
         return new ItemStack(item.get(), count);
     }
 }
-

@@ -2,7 +2,8 @@ package com.tkisor.nekojs.js.type_adapter;
 
 import com.tkisor.nekojs.NekoJS;
 import com.tkisor.nekojs.api.JSTypeAdapter;
-import com.tkisor.nekojs.wrapper.item.IngredientWrapper;
+import com.tkisor.nekojs.wrapper.item.IngredientJS;
+import com.tkisor.nekojs.wrapper.item.ItemStackJS;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderSet;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -10,30 +11,45 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.Ingredient;
 import org.graalvm.polyglot.Value;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 public final class IngredientAdapter implements JSTypeAdapter<Ingredient> {
+
     @Override
-    public Class<Ingredient> getTargetClass() { return Ingredient.class; }
+    public Class<Ingredient> getTargetClass() {
+        return Ingredient.class;
+    }
 
     @Override
     public boolean canConvert(Value value) {
-        return value != null && (value.isString() || value.hasArrayElements() ||
-                (value.isHostObject() && value.asHostObject() instanceof IngredientWrapper));
+        if (value.isNull()) return true;
+        if (value.isString()) return true;
+        if (value.hasArrayElements()) return true;
+        if (value.isHostObject()) {
+            Object obj = value.asHostObject();
+            return obj instanceof IngredientJS || obj instanceof Ingredient || obj instanceof ItemStack || obj instanceof ItemStackJS;
+        }
+        return false;
     }
 
     @Override
     public Ingredient convert(Value value) {
-        if (value == null || value.isNull()) return fallback();
+        if (value.isNull()) {
+            return null;
+        }
 
-        if (value.isHostObject() && value.asHostObject() instanceof IngredientWrapper wrapper) {
-            return wrapper.unwrap();
+        if (value.isHostObject()) {
+            Object obj = value.asHostObject();
+            if (obj instanceof IngredientJS wrapper) return wrapper.unwrap();
+            if (obj instanceof Ingredient ing) return ing;
+            if (obj instanceof ItemStack stack) return Ingredient.of(stack.getItem());
+            if (obj instanceof ItemStackJS wrapper) return Ingredient.of(wrapper.unwrap().getItem());
         }
 
         try {
@@ -44,7 +60,10 @@ public final class IngredientAdapter implements JSTypeAdapter<Ingredient> {
             }
             else if (value.hasArrayElements()) {
                 for (long i = 0; i < value.getArraySize(); i++) {
-                    resolveToHolders(value.getArrayElement(i).asString(), holders);
+                    Value elem = value.getArrayElement(i);
+                    if (elem.isString()) {
+                        resolveToHolders(elem.asString(), holders);
+                    }
                 }
             }
 
@@ -60,6 +79,8 @@ public final class IngredientAdapter implements JSTypeAdapter<Ingredient> {
     }
 
     private void resolveToHolders(String rawId, List<Holder<Item>> out) {
+        if (rawId == null || rawId.trim().isEmpty()) return;
+
         String id = formatId(rawId);
         Identifier loc = Identifier.tryParse(id.startsWith("#") ? id.substring(1) : id);
         if (loc == null) return;
@@ -73,7 +94,6 @@ public final class IngredientAdapter implements JSTypeAdapter<Ingredient> {
             });
         } else {
             Item item = BuiltInRegistries.ITEM.getValue(loc);
-
             if (item != null && item != Items.AIR) {
                 out.add(item.builtInRegistryHolder());
             }

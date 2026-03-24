@@ -1,7 +1,7 @@
 package com.tkisor.nekojs.wrapper.event.player;
 
 import com.tkisor.nekojs.bindings.player.NekoPlayerEvent;
-import com.tkisor.nekojs.wrapper.entity.PlayerWrapper;
+import com.tkisor.nekojs.wrapper.entity.PlayerJS;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 
 public class PlayerRespawnEventJS implements NekoPlayerEvent {
@@ -12,13 +12,13 @@ public class PlayerRespawnEventJS implements NekoPlayerEvent {
     }
 
     @Override
-    public PlayerWrapper getEntity() {
+    public PlayerJS getEntity() {
         return getPlayer();
     }
 
     @Override
-    public PlayerWrapper getPlayer() {
-        return new PlayerWrapper(rawEvent.getEntity());
+    public PlayerJS getPlayer() {
+        return new PlayerJS(rawEvent.getEntity());
     }
 
     /**

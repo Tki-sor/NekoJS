@@ -1,8 +1,8 @@
 package com.tkisor.nekojs.bindings.entity;
 
-import com.tkisor.nekojs.wrapper.entity.LivingEntityWrapper;
+import com.tkisor.nekojs.wrapper.entity.LivingEntityJS;
 
 public interface NekoLivingEntityEvent extends NekoEntityEvent {
     @Override
-    LivingEntityWrapper getEntity();
+    LivingEntityJS getEntity();
 }

@@ -1,8 +1,8 @@
 package com.tkisor.nekojs.wrapper.level;
 
 import com.tkisor.nekojs.wrapper.NekoWrapper;
-import com.tkisor.nekojs.wrapper.block.BlockWrapper;
-import com.tkisor.nekojs.wrapper.entity.EntityWrapper;
+import com.tkisor.nekojs.wrapper.block.BlockJS;
+import com.tkisor.nekojs.wrapper.entity.EntityJS;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -16,16 +16,13 @@ import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LightningBolt;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.block.state.BlockState;
 
 import java.util.Optional;
 
-public class LevelWrapper implements NekoWrapper<Level> {
+public class LevelJS implements NekoWrapper<Level> {
     private final Level level;
 
-    public LevelWrapper(Level level) {
+    public LevelJS(Level level) {
         this.level = level;
     }
 
@@ -33,9 +30,9 @@ public class LevelWrapper implements NekoWrapper<Level> {
         return this.level.dimension().identifier().toString();
     }
 
-    public BlockWrapper getBlock(int x, int y, int z) {
+    public BlockJS getBlock(int x, int y, int z) {
         BlockPos pos = new BlockPos(x, y, z);
-        return new BlockWrapper(this.level, pos, this.level.getBlockState(pos));
+        return new BlockJS(this.level, pos, this.level.getBlockState(pos));
     }
 
     public void setBlock(int x, int y, int z, Identifier blockId) {
@@ -46,7 +43,7 @@ public class LevelWrapper implements NekoWrapper<Level> {
         return getBlock(x, y, z).getId();
     }
 
-    public EntityWrapper spawnEntity(Identifier entityId, double x, double y, double z) {
+    public EntityJS spawnEntity(Identifier entityId, double x, double y, double z) {
         if (!(this.level instanceof ServerLevel serverLevel)) return null;
 
         if (entityId == null) return null;
@@ -58,7 +55,7 @@ public class LevelWrapper implements NekoWrapper<Level> {
         if (entity != null) {
             entity.setPos(x, y, z);
             serverLevel.addFreshEntity(entity);
-            return EntityWrapper.of(entity);
+            return EntityJS.of(entity);
         }
         return null;
     }

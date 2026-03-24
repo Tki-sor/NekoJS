@@ -2,7 +2,7 @@ package com.tkisor.nekojs.wrapper.event.player;
 
 import com.tkisor.nekojs.api.event.NekoCancellableEvent;
 import com.tkisor.nekojs.bindings.player.NekoPlayerEvent;
-import com.tkisor.nekojs.wrapper.entity.PlayerWrapper;
+import com.tkisor.nekojs.wrapper.entity.PlayerJS;
 import net.minecraft.network.chat.Component;
 import net.neoforged.neoforge.event.ServerChatEvent;
 
@@ -15,7 +15,7 @@ public class PlayerChatEventJS implements NekoCancellableEvent, NekoPlayerEvent 
     }
 
     @Override
-    public PlayerWrapper getEntity() {
+    public PlayerJS getEntity() {
         return getPlayer();
     }
 
@@ -24,8 +24,8 @@ public class PlayerChatEventJS implements NekoCancellableEvent, NekoPlayerEvent 
      * JS 侧调用: event.player 或 event.getPlayer()
      */
     @Override
-    public PlayerWrapper getPlayer() {
-        return new PlayerWrapper(rawEvent.getPlayer());
+    public PlayerJS getPlayer() {
+        return new PlayerJS(rawEvent.getPlayer());
     }
 
     public String getUsername() {

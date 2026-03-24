@@ -1,6 +1,6 @@
 package com.tkisor.nekojs.bindings.static_access;
 
-import com.tkisor.nekojs.wrapper.item.ItemStackWrapper;
+import com.tkisor.nekojs.wrapper.item.ItemStackJS;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
@@ -15,9 +15,9 @@ public class ItemJS {
      * 核心工厂方法
      * @param id 物品 ID (如 "minecraft:stone")
      * @param count 数量
-     * @return 包装后的 ItemStackWrapper
+     * @return 包装后的 ItemStackJS
      */
-    public ItemStackWrapper of(String id, int count) {
+    public ItemStackJS of(String id, int count) {
         Identifier location = Identifier.parse(id);
 
         Optional<Holder.Reference<Item>> item = BuiltInRegistries.ITEM.get(location);
@@ -26,13 +26,13 @@ public class ItemJS {
             throw new IllegalArgumentException("Invalid item id '" + id + "'");
         }
 
-        return new ItemStackWrapper(new ItemStack(item.get(), count));
+        return new ItemStackJS(new ItemStack(item.get(), count));
     }
 
     /**
      * 简易重载：默认数量为 1
      */
-    public ItemStackWrapper of(String id) {
+    public ItemStackJS of(String id) {
         return of(id, 1);
     }
 }

@@ -6,7 +6,6 @@ import com.tkisor.nekojs.NekoJS;
 import com.tkisor.nekojs.api.recipe.RecipeFilter;
 import com.tkisor.nekojs.api.recipe.RecipeJsonBuilder;
 import com.tkisor.nekojs.wrapper.RecipeRegistryProxy;
-import com.tkisor.nekojs.wrapper.item.ItemStackWrapper;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;

@@ -1,7 +1,7 @@
 package com.tkisor.nekojs.wrapper.event.player;
 
 import com.tkisor.nekojs.bindings.player.NekoPlayerEvent;
-import com.tkisor.nekojs.wrapper.entity.PlayerWrapper;
+import com.tkisor.nekojs.wrapper.entity.PlayerJS;
 import net.neoforged.neoforge.event.tick.PlayerTickEvent;
 
 public class PlayerTickPreEventJS implements NekoPlayerEvent {
@@ -12,12 +12,12 @@ public class PlayerTickPreEventJS implements NekoPlayerEvent {
     }
 
     @Override
-    public PlayerWrapper getEntity() {
+    public PlayerJS getEntity() {
         return getPlayer();
     }
 
     @Override
-    public PlayerWrapper getPlayer() {
-        return new PlayerWrapper(rawEvent.getEntity());
+    public PlayerJS getPlayer() {
+        return new PlayerJS(rawEvent.getEntity());
     }
 }
