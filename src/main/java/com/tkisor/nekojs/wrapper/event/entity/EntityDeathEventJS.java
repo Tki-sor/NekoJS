@@ -21,6 +21,7 @@ public class EntityDeathEventJS implements NekoCancellableEvent {
 
         Entity trueAttacker = rawEvent.getSource().getEntity();
         this.attacker = trueAttacker != null ? EntityJS.of(trueAttacker) : null;
+        
     }
 
     public String getEntityId() {

@@ -13,6 +13,7 @@ import com.tkisor.nekojs.bindings.static_access.IngredientJS;
 import com.tkisor.nekojs.bindings.static_access.ItemJS;
 import com.tkisor.nekojs.bindings.static_access.NativeEventsJS;
 import com.tkisor.nekojs.js.type_adapter.*;
+import net.minecraft.util.TriState;
 
 @RegisterNekoJSPlugin
 public class NekoJSCorePlugin implements NekoJSPlugin {
@@ -34,6 +35,8 @@ public class NekoJSCorePlugin implements NekoJSPlugin {
         registry.register(Binding.of("Ingredient", new IngredientJS()));
 
         registry.register(Binding.of("NativeEvents", new NativeEventsJS()));
+
+        registry.register(Binding.of("TriState", TriState.class));
     }
 
     @Override
@@ -46,6 +49,7 @@ public class NekoJSCorePlugin implements NekoJSPlugin {
         registry.register(new ComponentAdapter());
         registry.register(new EntityTypeAdapter());
         registry.register(new BlockAdapter());
+        registry.register(new NbtTypeAdapter());
     }
 
     @Override

@@ -18,7 +18,6 @@ import java.util.Properties;
 public final class NekoJSPaths {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
-    // 🌟 引擎核心配置状态：全局静态暴漏，随时读取
     public static boolean disableStrictSandbox = false;
 
     /* ================= Base ================= */
@@ -38,7 +37,6 @@ public final class NekoJSPaths {
     /* ================= Config & DX ================= */
     public static final Path CONFIG = ROOT.resolve("config");
     public static final Path README = ROOT.resolve("README.txt");
-    // 🌟 引擎配置文件路径 (nekojs/config/engine.properties)
     public static final Path ENGINE_CONFIG = CONFIG.resolve("engine.properties");
 
     /* ================= Initialization ================= */
@@ -53,7 +51,6 @@ public final class NekoJSPaths {
         ensureDir(NODE_MODULES);
 
         createReadme();
-        // 🌟 初始化文件夹的同时，立即加载引擎配置！
         loadEngineConfig();
     }
 
@@ -68,7 +65,6 @@ public final class NekoJSPaths {
         }
     }
 
-    // 🌟 新增：早期配置文件读取逻辑
     private static void loadEngineConfig() {
         Properties props = new Properties();
         try {

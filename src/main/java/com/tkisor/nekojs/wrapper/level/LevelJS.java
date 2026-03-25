@@ -105,7 +105,7 @@ public class LevelJS implements NekoWrapper<Level> {
         if (this.level instanceof ServerLevel serverLevel) {
             Optional<Holder<WorldClock>> defaultClock = serverLevel.dimensionType().defaultClock();
             defaultClock.ifPresent(worldClockHolder -> {
-                serverLevel.getServer().clockManager().setSpeed(worldClockHolder, speed);
+                serverLevel.getServer().clockManager().setRate(worldClockHolder, speed);
             });
         }
     }

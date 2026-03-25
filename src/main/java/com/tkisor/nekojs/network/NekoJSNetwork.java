@@ -3,14 +3,15 @@ package com.tkisor.nekojs.network;
 import com.tkisor.nekojs.NekoJS;
 import com.tkisor.nekojs.client.gui.NekoErrorScreen;
 import net.minecraft.client.Minecraft;
+import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.neoforged.neoforge.network.registration.PayloadRegistrar;
 
 @EventBusSubscriber(modid = NekoJS.MODID)
 public class NekoJSNetwork {
-
     @SubscribeEvent
     public static void register(final RegisterPayloadHandlersEvent event) {
         event.registrar("1")

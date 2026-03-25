@@ -7,6 +7,7 @@ import com.mojang.serialization.JsonOps;
 import com.tkisor.nekojs.NekoJS;
 import com.tkisor.nekojs.bindings.event.ServerEvents;
 import com.tkisor.nekojs.mixin_api.IRecipeManagerExtension;
+import com.tkisor.nekojs.utils.NekoConditionEvaluator;
 import com.tkisor.nekojs.wrapper.event.server.RecipeEventJS;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.Registries;
@@ -59,8 +60,12 @@ public abstract class RecipeManagerMixin implements IRecipeManagerExtension {
     @Unique
     @Override
     public void nekojs$applyScripts() {
-        RecipeEventJS eventJS = new RecipeEventJS(this.nekojs$rawJsons, this.registries);
+        int beforeCount = this.nekojs$rawJsons.size();
+        this.nekojs$rawJsons.entrySet().removeIf(entry -> !NekoConditionEvaluator.test(entry.getValue()));
+        int afterCount = this.nekojs$rawJsons.size();
+        NekoJS.LOGGER.info("[NekoJS] 经过底层的条件求值，剔除了 {} 个未满足前置的配方。", beforeCount - afterCount);
 
+        RecipeEventJS eventJS = new RecipeEventJS(this.nekojs$rawJsons, this.registries);
         try {
             ServerEvents.RECIPES.post(eventJS);
         } catch (Exception e) {
@@ -73,12 +78,11 @@ public abstract class RecipeManagerMixin implements IRecipeManagerExtension {
                 Recipe<?> recipe = Recipe.CODEC.parse(this.registries.createSerializationContext(JsonOps.INSTANCE), entry.getValue()).getOrThrow(JsonParseException::new);
                 newHolders.add(new RecipeHolder<>(ResourceKey.create(Registries.RECIPE, entry.getKey()), recipe));
             } catch (Exception e) {
-                NekoJS.LOGGER.error("[NekoJS] 脚本修改后的配方不合法 {}: {}", entry.getKey(), e.getMessage());
+                NekoJS.LOGGER.error("[NekoJS] 配方不合法 {}: {}", entry.getKey(), e.getMessage());
             }
         }
 
         this.recipes = RecipeMap.create(newHolders);
-
         this.nekojs$rawJsons.clear();
 
         NekoJS.LOGGER.info("[NekoJS] 脚本执行完毕，当前配方总数: {}", this.recipes.values().size());

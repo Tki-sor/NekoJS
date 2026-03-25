@@ -1,7 +1,7 @@
 package com.tkisor.nekojs.client.gui;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.MultiLineTextWidget;
 import net.minecraft.client.gui.screens.Screen;
@@ -38,19 +38,18 @@ public class NekoErrorScreen extends Screen {
     }
 
     @Override
-    public void renderBackground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-
+    public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
         graphics.fillGradient(0, 0, this.width, this.height, 0xC0000000, 0xC0000000);
     }
 
     @Override
-    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        this.renderBackground(graphics, mouseX, mouseY, partialTick);
+    public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+        this.extractBackground(graphics, mouseX, mouseY, partialTick);
 
-        graphics.drawCenteredString(this.font, "§c⚠ NekoJS 脚本运行异常", this.width / 2, 15, 0xFFFFFF);
-        graphics.drawString(this.font, "目标脚本: §e" + scriptId, 20, 28, 0xFFFFFF);
+        graphics.centeredText(this.font, "§c⚠ NekoJS 脚本运行异常", this.width / 2, 15, 0xFFFFFF);
+        graphics.text(this.font, "目标脚本: §e" + scriptId, 20, 28, 0xFFFFFF);
 
-        super.render(graphics, mouseX, mouseY, partialTick);
+        super.extractRenderState(graphics, mouseX, mouseY, partialTick);
     }
 
     @Override

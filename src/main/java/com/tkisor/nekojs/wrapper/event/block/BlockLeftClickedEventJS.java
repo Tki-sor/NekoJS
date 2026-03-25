@@ -3,9 +3,11 @@ package com.tkisor.nekojs.wrapper.event.block;
 import com.tkisor.nekojs.api.event.NekoCancellableEvent;
 import com.tkisor.nekojs.wrapper.block.BlockJS;
 import com.tkisor.nekojs.wrapper.entity.PlayerJS;
+import com.tkisor.nekojs.wrapper.item.ItemStackJS;
 import lombok.Getter;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.util.TriState;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
@@ -13,11 +15,7 @@ import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 public class BlockLeftClickedEventJS implements NekoCancellableEvent {
 
     private final PlayerInteractEvent.LeftClickBlock rawEvent;
-    /**
-     * -- GETTER --
-     *  获取被点击的方块状态
-     *  JS 侧: event.block
-     */
+
     @Getter
     private final BlockJS block;
 
@@ -41,6 +39,27 @@ public class BlockLeftClickedEventJS implements NekoCancellableEvent {
     public String getBlockId() {
         return this.block.getId();
     }
+
+    public ItemStackJS getItemStack() {
+        return new ItemStackJS(rawEvent.getItemStack());
+    }
+
+    public TriState getUseItem() {
+        return rawEvent.getUseItem();
+    }
+
+    public PlayerInteractEvent.LeftClickBlock.Action getAction() {
+        return rawEvent.getAction();
+    }
+
+    public void setUseBlock(TriState triggerBlock) {
+        rawEvent.setUseBlock(triggerBlock);
+    }
+
+    public void setUseItem(TriState triggerItem) {
+        rawEvent.setUseItem(triggerItem);
+    }
+
 
     /**
      * 获取方块坐标

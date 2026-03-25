@@ -4,6 +4,7 @@ import com.tkisor.nekojs.api.event.NekoCancellableEvent;
 import com.tkisor.nekojs.wrapper.block.BlockJS;
 import com.tkisor.nekojs.wrapper.entity.PlayerJS;
 import lombok.Getter;
+import net.minecraft.world.level.LevelAccessor;
 import net.neoforged.neoforge.event.level.BlockEvent;
 
 public class BlockBreakEventJS implements NekoCancellableEvent {
@@ -30,4 +31,7 @@ public class BlockBreakEventJS implements NekoCancellableEvent {
         return this.block.getId();
     }
 
+    public LevelAccessor getLevel() {
+        return this.rawEvent.getLevel();
+    }
 }
