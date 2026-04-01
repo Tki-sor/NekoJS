@@ -1,5 +1,6 @@
 package com.tkisor.nekojs.api.data;
 
+import com.tkisor.nekojs.script.ScriptType;
 import lombok.Getter;
 
 public class Binding {
@@ -15,27 +16,44 @@ public class Binding {
     @Getter
     private final boolean isStaticClass;
 
-    private Binding(String name, Object object, boolean isStaticClass) {
+    @Getter
+    private final ScriptType targetType;
+
+    private Binding(String name, Object object, boolean isStaticClass, ScriptType targetType) {
         this.name = name;
         this.object = object;
         this.type = isStaticClass ? (Class<?>) object : object.getClass();
         this.isStaticClass = isStaticClass;
+        this.targetType = targetType;
     }
 
     /**
-     * 绑定一个实例对象 (可以调用非静态方法)
+     * 判断该绑定是否允许注入到指定的脚本环境中
      */
+    public boolean isValidFor(ScriptType envType) {
+        return this.targetType == ScriptType.COMMON || this.targetType == envType;
+    }
+
+    // ================= 默认通用环境 (COMMON) =================
+
     public static Binding of(String name, Object object) {
-        if (object instanceof Class<?>) {
-            throw new IllegalArgumentException("请使用 Binding.of(name, Class) 来绑定静态类");
-        }
-        return new Binding(name, object, false);
+        return of(ScriptType.COMMON, name, object);
     }
 
-    /**
-     * 绑定一个类 (用于调用静态方法)
-     */
     public static Binding of(String name, Class<?> type) {
-        return new Binding(name, type, true);
+        return of(ScriptType.COMMON, name, type);
+    }
+
+    // ================= 指定环境 (SERVER, CLIENT, STARTUP 等) =================
+
+    public static Binding of(ScriptType targetType, String name, Object object) {
+        if (object instanceof Class<?>) {
+            throw new IllegalArgumentException("请使用 Binding.of(targetType, name, Class) 来绑定静态类");
+        }
+        return new Binding(name, object, false, targetType);
+    }
+
+    public static Binding of(ScriptType targetType, String name, Class<?> type) {
+        return new Binding(name, type, true, targetType);
     }
 }

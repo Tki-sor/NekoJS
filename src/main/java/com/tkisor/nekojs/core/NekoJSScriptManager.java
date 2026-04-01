@@ -1,6 +1,7 @@
 package com.tkisor.nekojs.core;
 
 import com.tkisor.nekojs.NekoJS;
+import com.tkisor.nekojs.api.data.Binding;
 import com.tkisor.nekojs.api.data.NekoBindings;
 import com.tkisor.nekojs.api.event.NekoEventGroups;
 import com.tkisor.nekojs.api.event.EventGroupJS;
@@ -67,19 +68,27 @@ public final class NekoJSScriptManager {
         Context ctx = NekoSandboxBuilder.build(type);
 
         var bindings = ctx.getBindings("js");
+
         var values = NekoEventGroups.all().values();
-        NekoJS.LOGGER.info("正在注册 {} 个事件组...", values.size());
+        NekoJS.LOGGER.info("正在为 {} 注册 {} 个事件组...", type.name(), values.size());
         for (var group : values) {
             bindings.putMember(group.name(), new EventGroupJS(group, type));
         }
 
-        Map<String, Object> allBindings = NekoBindings.all();
-        allBindings.forEach((name, obj) -> {
-            if (obj instanceof Class<?> clazz) {
-                Value javaType = bindings.getMember("Java").invokeMember("type", clazz.getName());
-                bindings.putMember(name, javaType);
-            } else {
-                bindings.putMember(name, obj);
+        Map<String, Binding> allBindings = NekoBindings.all();
+
+        allBindings.forEach((name, binding) -> {
+            if (binding.isValidFor(type)) {
+
+                Object obj = binding.getObject();
+
+                if (binding.isStaticClass()) {
+                    Value javaType = bindings.getMember("Java").invokeMember("type", ((Class<?>) obj).getName());
+                    bindings.putMember(name, javaType);
+                } else {
+                    bindings.putMember(name, obj);
+                }
+
             }
         });
 

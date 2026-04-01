@@ -7,20 +7,20 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 public final class NekoBindings {
-    private static final Map<String, Object> BINDING = new LinkedHashMap<>();
+    private static final Map<String, Binding> BINDINGS = new LinkedHashMap<>();
     private static boolean initialized = false;
 
     private NekoBindings() {}
 
     static void register(Binding binding) {
-        BINDING.put(binding.getName(), binding.getObject());
+        BINDINGS.put(binding.getName(), binding);
     }
 
-    public static synchronized Map<String, Object> all() {
+    public static synchronized Map<String, Binding> all() {
         if (!initialized) {
             initialize();
         }
-        return Collections.unmodifiableMap(BINDING);
+        return Collections.unmodifiableMap(BINDINGS);
     }
 
     private static void initialize() {
