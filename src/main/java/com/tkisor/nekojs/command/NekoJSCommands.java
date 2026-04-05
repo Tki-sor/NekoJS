@@ -4,6 +4,7 @@ import com.mojang.brigadier.CommandDispatcher;
 import com.tkisor.nekojs.NekoJS;
 import com.tkisor.nekojs.core.error.NekoErrorTracker;
 import com.tkisor.nekojs.core.error.ScriptError;
+import com.tkisor.nekojs.network.OpenWorkspacePacket;
 import com.tkisor.nekojs.network.ShowErrorListPacket;
 import com.tkisor.nekojs.network.ShowErrorScreenPacket;
 import com.tkisor.nekojs.network.dto.ErrorSummaryDTO;
@@ -72,23 +73,6 @@ public final class NekoJSCommands {
                                     return 1;
                                 })
                         )
-
-                        .then(Commands.literal("view_error")
-                                .then(Commands.argument("scriptId", IdentifierArgument.id())
-                                        .executes(context -> {
-                                            Identifier scriptId = IdentifierArgument.getId(context, "scriptId");
-                                            ScriptError error = NekoErrorTracker.getError(scriptId);
-
-                                            if (error != null) {
-                                                ServerPlayer player = context.getSource().getPlayerOrException();
-                                                PacketDistributor.sendToPlayer(player, new ShowErrorScreenPacket(scriptId.toString(), error.getFullDetailText()));
-                                            } else {
-                                                context.getSource().sendFailure(Component.literal("§c找不到该脚本的错误记录。可能已被清理。"));
-                                            }
-                                            return 1;
-                                        })
-                                )
-                        )
                         .then(Commands.literal("view_all_errors")
                                 .executes(context -> {
                                     CommandSourceStack source = context.getSource();
@@ -114,6 +98,16 @@ public final class NekoJSCommands {
                                     return 1;
                                 })
                         )
+                        .then(Commands.literal("editor")
+                                .executes(context -> {
+                                    CommandSourceStack source = context.getSource();
+                                    ServerPlayer player = source.getPlayerOrException();
+
+                                    // 发送打开工作区的包给客户端
+                                    PacketDistributor.sendToPlayer(player, new OpenWorkspacePacket());
+                                    return 1;
+                                })
+                        )
         );
     }
 
@@ -123,19 +117,5 @@ public final class NekoJSCommands {
                         .withClickEvent(new ClickEvent.RunCommand("/nekojs view_all_errors"))
                         .withHoverEvent(new HoverEvent.ShowText(Component.literal("在全屏列表中查看所有错误")))
                 ));
-
-        for (ScriptError error : NekoErrorTracker.getAllErrors()) {
-            String idStr = error.getErrorId().toString();
-            String pathStr = error.getDisplayPath();
-
-            String countBadge = error.getOccurrenceCount() > 1 ? " §6[x" + error.getOccurrenceCount() + "]" : "";
-
-            MutableComponent link = Component.literal("  §4▶ §c" + pathStr + " §8(第 " + error.getLineNumber() + " 行)" + countBadge)
-                    .withStyle(style -> style
-                            .withHoverEvent(new HoverEvent.ShowText(Component.literal("§c" + error.getErrorMessage() + "\n§e点击在全屏 UI 中查看堆栈详情")))
-                            .withClickEvent(new ClickEvent.RunCommand("/nekojs view_error " + idStr))
-                    );
-            source.sendSystemMessage(link);
-        }
     }
 }

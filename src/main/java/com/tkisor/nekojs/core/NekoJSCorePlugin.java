@@ -14,8 +14,11 @@ import com.tkisor.nekojs.bindings.static_access.IngredientJS;
 import com.tkisor.nekojs.bindings.static_access.ItemJS;
 import com.tkisor.nekojs.bindings.static_access.NativeEventsJS;
 import com.tkisor.nekojs.js.type_adapter.*;
+import com.tkisor.nekojs.script.ScriptType;
 import net.minecraft.client.Minecraft;
 import net.minecraft.util.TriState;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.fml.loading.FMLEnvironment;
 
 @RegisterNekoJSPlugin
 public class NekoJSCorePlugin implements NekoJSPlugin {
@@ -40,7 +43,9 @@ public class NekoJSCorePlugin implements NekoJSPlugin {
 
         registry.register(Binding.of("TriState", TriState.class));
 
-        registry.register(Binding.of("Minecraft", Minecraft.class));
+        if (FMLEnvironment.getDist() == Dist.CLIENT) {
+            registry.register(Binding.of(ScriptType.CLIENT,"Minecraft", Minecraft.class));
+        }
     }
 
     @Override

@@ -57,9 +57,7 @@ public final class NekoJSPaths {
     /* ================= Utilities ================= */
     private static void ensureDir(Path dir) {
         try {
-            if (Files.notExists(dir)) {
-                Files.createDirectories(dir);
-            }
+            Files.createDirectories(dir);
         } catch (Exception e) {
             NekoJS.LOGGER.error("[NekoJS] 无法创建目录: {}", dir, e);
         }
