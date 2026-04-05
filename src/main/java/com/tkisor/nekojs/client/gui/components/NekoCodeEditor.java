@@ -19,7 +19,11 @@ import org.lwjgl.glfw.GLFW;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class NekoCodeEditor {
     private final int x, y, width, height;
@@ -49,6 +53,28 @@ public class NekoCodeEditor {
     private double lastScroll = 0;
     private long lastEditTime = 0;
 
+    // 🌟 自动补全相关的状态和常量
+    private static final String[] KEYWORDS = {
+            "Array", "Block", "Boolean", "Client", "Entity", "Event", "Item", "JSON", "Level", "Math",
+            "Number", "Object", "Player", "Promise", "Server", "String", "break", "case", "catch", "class",
+            "const", "continue", "console", "default", "delete", "do", "else", "export", "false", "finally", "for",
+            "function", "if", "import", "instanceof", "let", "new", "null", "return", "setInterval", "setTimeout",
+            "super", "switch", "this", "throw", "true", "try", "typeof", "undefined", "var", "void", "while", "yield"
+    };
+
+    // 🌟 新增：基于文件内容的动态分词缓存
+    private final Set<String> documentWords = new HashSet<>();
+    private static final Pattern WORD_PATTERN = Pattern.compile("[a-zA-Z_$][a-zA-Z0-9_$]*");
+
+    private boolean showAutoComplete = false;
+    private final List<String> suggestions = new ArrayList<>();
+    private int suggestionIndex = 0;
+    private int wordStartIdx = -1;
+
+    // 用于记录渲染时真实的屏幕坐标，供自动补全菜单使用
+    private int acCursorDrawX = -1;
+    private int acCursorDrawY = -1;
+
     public NekoCodeEditor(Font font, int x, int y, int width, int height, String initialText, Runnable onSave) {
         this.font = font;
         this.x = x;
@@ -70,12 +96,16 @@ public class NekoCodeEditor {
 
         this.editorBox.setValue(this.originalScriptText);
         this.updateLineMap();
+        this.updateDocumentWords(this.originalScriptText); // 初始化分词
 
         this.editorBox.textField.setCursorListener(() -> {
             if (!isRestoringHistory) {
                 lastCursor = this.editorBox.textField.cursor();
                 lastScroll = this.editorBox.scrollAmount();
             }
+            findMatchingBrackets();
+            if (!isRestoringHistory) updateAutoComplete();
+            lastEditTime = System.currentTimeMillis();
         });
 
         this.editorBox.setValueListener(text -> {
@@ -88,10 +118,26 @@ public class NekoCodeEditor {
             lastEditTime = now;
             this.isDirty = !text.equals(this.originalScriptText);
             this.updateLineMap();
+            this.updateDocumentWords(text); // 文本改变时更新分词词库
+            findMatchingBrackets();
+            updateAutoComplete();
         });
 
         this.editorBox.setScrollAmount(0);
         this.setCursorAbsolute(0);
+    }
+
+    // 🌟 新增：提取并更新当前文件的所有可用单词
+    private void updateDocumentWords(String text) {
+        documentWords.clear();
+        Matcher m = WORD_PATTERN.matcher(text);
+        while (m.find()) {
+            String word = m.group();
+            // 过滤掉太短的字母（如纯粹的 i, j 等单字母变量），保持补全菜单的整洁
+            if (word.length() > 2) {
+                documentWords.add(word);
+            }
+        }
     }
 
     public MultiLineEditBox getWidget() { return this.editorBox; }
@@ -103,7 +149,6 @@ public class NekoCodeEditor {
         this.isDirty = false;
     }
 
-    // 🌟 新增：暴露原始文本以便于重建编辑器时不丢失 Dirty 状态
     public String getOriginalScriptText() {
         return this.originalScriptText;
     }
@@ -111,13 +156,29 @@ public class NekoCodeEditor {
     public void setOriginalScriptText(String text) {
         this.originalScriptText = text;
         this.isDirty = !this.getValue().equals(text);
+        this.updateDocumentWords(text);
+    }
+
+    public void setHighlightAndScroll(int start, int end) {
+        this.setSelection(end, start);
+        this.scrollToCursorCentered();
+    }
+
+    public void scrollToCursorCentered() {
+        int cursorLine = editorBox.textField.getLineAtCursor();
+        if (cursorLine == -1) return;
+
+        int cursorY = cursorLine * 9;
+        int visibleHeight = height - 8;
+        double targetScroll = cursorY - (visibleHeight / 2.0) + 4.5;
+        editorBox.setScrollAmount(Math.max(0, targetScroll));
     }
 
     private void setCursorAbsolute(int pos) {
         setSelection(pos, pos);
     }
 
-    private void setSelection(int cursor, int selectCursor) {
+    public void setSelection(int cursor, int selectCursor) {
         int len = this.editorBox.getValue().length();
         this.editorBox.textField.cursor = Math.max(0, Math.min(cursor, len));
         this.editorBox.textField.selectCursor = Math.max(0, Math.min(selectCursor, len));
@@ -193,6 +254,25 @@ public class NekoCodeEditor {
     public boolean keyPressed(KeyEvent event) {
         int key = event.key();
 
+        if (showAutoComplete && !suggestions.isEmpty()) {
+            if (key == GLFW.GLFW_KEY_DOWN) {
+                suggestionIndex = (suggestionIndex + 1) % suggestions.size();
+                return true;
+            }
+            if (key == GLFW.GLFW_KEY_UP) {
+                suggestionIndex = (suggestionIndex - 1 + suggestions.size()) % suggestions.size();
+                return true;
+            }
+            if (key == GLFW.GLFW_KEY_ENTER || key == GLFW.GLFW_KEY_KP_ENTER || key == GLFW.GLFW_KEY_TAB) {
+                applySuggestion();
+                return true;
+            }
+            if (key == GLFW.GLFW_KEY_ESCAPE) {
+                showAutoComplete = false;
+                return true;
+            }
+        }
+
         if (isCtrlDown() && key == GLFW.GLFW_KEY_S) {
             if (this.onSave != null) this.onSave.run();
             return true;
@@ -231,6 +311,92 @@ public class NekoCodeEditor {
         }
 
         return false;
+    }
+
+    // 🌟 核心修改：整合系统保留字和文件内提取的单词
+    private void updateAutoComplete() {
+        int cursor = editorBox.textField.cursor();
+        String text = editorBox.getValue();
+
+        if (cursor <= 0 || text.isEmpty()) {
+            showAutoComplete = false;
+            return;
+        }
+
+        int start = cursor - 1;
+        while (start >= 0) {
+            char c = text.charAt(start);
+            if (Character.isLetterOrDigit(c) || c == '_' || c == '$') {
+                start--;
+            } else {
+                break;
+            }
+        }
+        start++;
+        wordStartIdx = start;
+
+        int prefixLen = cursor - start;
+        if (prefixLen <= 0) {
+            showAutoComplete = false;
+            return;
+        }
+
+        String prefix = text.substring(start, cursor);
+        suggestions.clear();
+
+        Set<String> addedWords = new HashSet<>();
+
+        // 1. 优先加载系统关键字
+        for (String kw : KEYWORDS) {
+            if (kw.startsWith(prefix) && !kw.equals(prefix)) {
+                suggestions.add(kw);
+                addedWords.add(kw);
+            }
+        }
+
+        // 2. 然后加载从当前文件内容里推断出来的变量名/函数名
+        List<String> docSuggestions = new ArrayList<>();
+        for (String dw : documentWords) {
+            // 防止已经加过的保留字重复，同时也过滤掉你正在打的这个不完整单词自身
+            if (dw.startsWith(prefix) && !dw.equals(prefix) && !addedWords.contains(dw)) {
+                docSuggestions.add(dw);
+                addedWords.add(dw);
+            }
+        }
+
+        // 3. 对提取出的文件单词按字母排序，显得更工整
+        docSuggestions.sort(String::compareToIgnoreCase);
+        suggestions.addAll(docSuggestions);
+
+        if (suggestions.isEmpty()) {
+            showAutoComplete = false;
+        } else {
+            showAutoComplete = true;
+            if (suggestionIndex >= suggestions.size()) {
+                suggestionIndex = 0;
+            }
+        }
+    }
+
+    private void applySuggestion() {
+        if (!showAutoComplete || suggestions.isEmpty()) return;
+        String chosen = suggestions.get(suggestionIndex);
+        String text = editorBox.getValue();
+        int cursor = editorBox.textField.cursor();
+
+        String newText = text.substring(0, wordStartIdx) + chosen + text.substring(cursor);
+
+        isRestoringHistory = true;
+        pushCurrentState();
+        editorBox.setValue(newText);
+
+        int newCursorPos = wordStartIdx + chosen.length();
+        setCursorAbsolute(newCursorPos);
+        isRestoringHistory = false;
+
+        showAutoComplete = false;
+        this.isDirty = true;
+        updateLineMap();
     }
 
     private void pushPreviousState() {
@@ -467,7 +633,7 @@ public class NekoCodeEditor {
             editorBox.setValue(newText);
             setCursorAbsolute(cursor + insert.length());
             editorBox.setScrollAmount(currentScroll);
-            scrollToCursor();
+            scrollToCursorCentered();
             isRestoringHistory = false;
 
             lastText = newText;
@@ -482,22 +648,9 @@ public class NekoCodeEditor {
         return true;
     }
 
-    private void scrollToCursor() {
-        int cursorLine = editorBox.textField.getLineAtCursor();
-        if (cursorLine == -1) return;
-
-        int cursorY = cursorLine * 9;
-        double currentScroll = editorBox.scrollAmount();
-        int visibleHeight = height - 8;
-
-        if (cursorY < currentScroll) {
-            editorBox.setScrollAmount(cursorY);
-        } else if (cursorY + 9 > currentScroll + visibleHeight) {
-            editorBox.setScrollAmount(cursorY + 9 - visibleHeight);
-        }
-    }
-
     public void mouseClicked(double mouseX, double mouseY, int button) {
+        showAutoComplete = false;
+
         if (mouseX >= x + GUTTER_WIDTH && mouseX <= x + width && mouseY >= y && mouseY <= y + height) {
             double relativeY = mouseY - (y + 8) + editorBox.scrollAmount();
             if (relativeY >= 0) {
@@ -511,7 +664,6 @@ public class NekoCodeEditor {
 
     public void renderUnderlay(GuiGraphicsExtractor g) {
         g.fill(x, y, x + width, y + height, 0xFF1E1E1E);
-        findMatchingBrackets();
 
         int totalVisualLines = visualToRealLineMap.size();
         int innerX = x + 2;
@@ -528,6 +680,9 @@ public class NekoCodeEditor {
         int textStartX = x + GUTTER_WIDTH + 6;
         int textStartY = y + 8;
         String rawText = editorBox.getValue();
+
+        acCursorDrawX = -1;
+        acCursorDrawY = -1;
 
         for (int i = 0; i <= maxVisibleLines; i++) {
             int visualIdx = startLine + i;
@@ -566,11 +721,21 @@ public class NekoCodeEditor {
                     String textBeforeCursor = rawText.substring(bBegin, editorBox.textField.cursor());
                     int cursorPixelX = textStartX + this.font.width(textBeforeCursor);
 
-                    float sin = (float) Math.sin(System.currentTimeMillis() / 200.0);
-                    int alpha = (int) ((sin * 0.5f + 0.5f) * 255);
+                    acCursorDrawX = cursorPixelX;
+                    acCursorDrawY = drawY + fontHeight + 2;
+
+                    long timeSinceEdit = System.currentTimeMillis() - lastEditTime;
+                    float alphaMult;
+                    if (timeSinceEdit < 500) {
+                        alphaMult = 1.0f;
+                    } else {
+                        float sin = (float) Math.sin((timeSinceEdit - 500) / 200.0);
+                        alphaMult = sin * 0.5f + 0.5f;
+                    }
+                    int alpha = (int) (alphaMult * 255);
                     int cursorColor = ARGB.color(alpha, 220, 220, 220);
 
-                    g.fill(cursorPixelX, drawY - 1, cursorPixelX + 1, drawY + fontHeight, cursorColor);
+                    g.fill(cursorPixelX, drawY, cursorPixelX + 1, drawY + fontHeight, cursorColor);
                 }
             }
 
@@ -587,6 +752,52 @@ public class NekoCodeEditor {
         }
 
         g.fill(innerX + GUTTER_WIDTH - 1, innerY, innerX + GUTTER_WIDTH, innerY + innerH, 0xFF3A3A3A);
+
+        if (showAutoComplete && !suggestions.isEmpty() && acCursorDrawX != -1 && acCursorDrawY != -1) {
+            renderAutoComplete(g, acCursorDrawX, acCursorDrawY);
+        }
+    }
+
+    private void renderAutoComplete(GuiGraphicsExtractor g, int ax, int ay) {
+        int itemH = 12;
+        int maxItems = 6;
+        int visibleItems = Math.min(suggestions.size(), maxItems);
+        int menuH = visibleItems * itemH + 4;
+
+        int menuW = 100;
+        for (String s : suggestions) {
+            menuW = Math.max(menuW, font.width(s) + 16);
+        }
+
+        if (ay + menuH > this.y + this.height) {
+            ay -= (menuH + 12);
+        }
+
+        g.fill(ax, ay, ax + menuW, ay + menuH, 0xF21E1E1E);
+        g.outline(ax, ay, menuW, menuH, 0xFF454545);
+
+        int startIdx = Math.max(0, Math.min(suggestionIndex - visibleItems / 2, suggestions.size() - visibleItems));
+
+        for (int i = 0; i < visibleItems; i++) {
+            int idx = startIdx + i;
+            String s = suggestions.get(idx);
+            int itemY = ay + 2 + i * itemH;
+
+            if (idx == suggestionIndex) {
+                g.fill(ax + 1, itemY, ax + menuW - 1, itemY + itemH, 0xFF094771);
+            }
+
+            int prefixLen = editorBox.textField.cursor() - wordStartIdx;
+            if (prefixLen > 0 && prefixLen <= s.length()) {
+                String prefix = s.substring(0, prefixLen);
+                String rest = s.substring(prefixLen);
+                int px = ax + 6;
+                g.text(font, prefix, px, itemY + 2, 0xFF00A2FF);
+                g.text(font, rest, px + font.width(prefix), itemY + 2, 0xFFCCCCCC);
+            } else {
+                g.text(font, s, ax + 6, itemY + 2, 0xFFCCCCCC);
+            }
+        }
     }
 
     private void updateLineMap() {

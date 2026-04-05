@@ -137,7 +137,6 @@ public class NekoTabbedEditor {
     public Tab getActiveTab() { return activeTab; }
     public boolean isEmpty() { return tabs.isEmpty(); }
 
-    // 🌟 暴露给外部使用，用于判断鼠标是否悬浮在下拉菜单上
     public boolean isHoveringDropdown(double mx, double my) {
         if (!isDropdownOpen) return false;
         int menuW = 200;
@@ -159,7 +158,7 @@ public class NekoTabbedEditor {
         g.enableScissor(x, y, x + visibleW, y + TAB_HEIGHT);
 
         int currentX = x - (int) scrollOffset;
-        String hoveredTabPath = null; // 用于记录当前鼠标悬浮的标签路径
+        String hoveredTabPath = null;
 
         for (Tab tab : tabs) {
             int tabW = getTabWidth(tab);
@@ -168,7 +167,6 @@ public class NekoTabbedEditor {
                 boolean isActive = (tab == activeTab);
                 String label = getTabLabel(tab);
 
-                // 判断鼠标是否悬浮在这个标签页上
                 boolean isHoveringTab = mouseX >= currentX && mouseX <= currentX + tabW && mouseY >= y && mouseY <= y + TAB_HEIGHT;
                 if (isHoveringTab) hoveredTabPath = tab.path;
 
@@ -210,7 +208,6 @@ public class NekoTabbedEditor {
             activeTab.editor.renderUnderlay(g);
         }
 
-        // 渲染下拉菜单
         if (isDropdownOpen) {
             int menuW = 200;
             int menuX = x + width - menuW;
@@ -255,21 +252,19 @@ public class NekoTabbedEditor {
             }
         }
 
-        // 🌟 最后一步渲染标签悬浮提示 (Tooltip)，并确保不被下拉菜单遮挡
         if (hoveredTabPath != null && !isHoveringDropdown(mouseX, mouseY)) {
             int tooltipW = font.width(hoveredTabPath) + 8;
             int tooltipH = 14;
             int tooltipX = mouseX + 12;
             int tooltipY = mouseY + 12;
 
-            // 如果 Tooltip 超出右侧边界，就往左边靠
             if (tooltipX + tooltipW > this.x + this.width) {
                 tooltipX = mouseX - tooltipW - 4;
             }
 
-            g.fill(tooltipX, tooltipY, tooltipX + tooltipW, tooltipY + tooltipH, 0xF0151515); // 半透明黑底
-            g.outline(tooltipX, tooltipY, tooltipW, tooltipH, 0xFF555555); // 灰边框
-            g.text(font, hoveredTabPath, tooltipX + 4, tooltipY + 3, 0xFFCCCCCC); // 浅灰路径文字
+            g.fill(tooltipX, tooltipY, tooltipX + tooltipW, tooltipY + tooltipH, 0xF0151515);
+            g.outline(tooltipX, tooltipY, tooltipW, tooltipH, 0xFF555555);
+            g.text(font, hoveredTabPath, tooltipX + 4, tooltipY + 3, 0xFFCCCCCC);
         }
     }
 
