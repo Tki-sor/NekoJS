@@ -15,11 +15,13 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.server.packs.resources.ResourceManager;
+import net.minecraft.util.Unit;
 import net.minecraft.util.profiling.ProfilerFiller;
 import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.RecipeManager;
 import net.minecraft.world.item.crafting.RecipeMap;
+import net.neoforged.neoforge.common.conditions.ConditionalOps;
 import net.neoforged.neoforge.common.conditions.ICondition;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -30,10 +32,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.io.Reader;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Mixin(RecipeManager.class)
 public abstract class RecipeManagerMixin implements IRecipeManagerExtension {
@@ -61,7 +60,12 @@ public abstract class RecipeManagerMixin implements IRecipeManagerExtension {
     @Override
     public void nekojs$applyScripts() {
         int beforeCount = this.nekojs$rawJsons.size();
-        this.nekojs$rawJsons.entrySet().removeIf(entry -> !ICondition.conditionsMatched(JsonOps.INSTANCE, entry.getValue()));
+
+        // 相当于: ! ICondition.conditionsMatched(JsonOps.INSTANCE, entry.getValue())
+        // 这么写只是为了避免重复创建 ConditionalOps
+        var conditionalCodec = ConditionalOps.createConditionalCodec(Unit.CODEC);
+        this.nekojs$rawJsons.entrySet().removeIf(entry -> ICondition.getWithConditionalCodec(conditionalCodec, JsonOps.INSTANCE, entry.getValue()).isEmpty());
+
         int afterCount = this.nekojs$rawJsons.size();
         NekoJS.LOGGER.info("[NekoJS] 经过底层的条件求值，剔除了 {} 个未满足前置的配方。", beforeCount - afterCount);
 
