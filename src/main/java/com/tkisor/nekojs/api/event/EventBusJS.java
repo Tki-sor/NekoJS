@@ -8,6 +8,7 @@ import com.tkisor.nekojs.utils.event.EventListenerToken;
 import com.tkisor.nekojs.utils.event.dispatch.DispatchCancellableEventBus;
 import com.tkisor.nekojs.utils.event.dispatch.DispatchEventBus;
 import com.tkisor.nekojs.utils.event.dispatch.DispatchKey;
+import net.neoforged.bus.api.ICancellableEvent;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
@@ -24,7 +25,7 @@ import java.util.function.Predicate;
  */
 public class EventBusJS<EVENT, KEY> implements ProxyExecutable {
     public static <E, K> EventBusJS<E, K> of(Class<E> eventType) {
-        return of(eventType, NekoCancellableEvent.class.isAssignableFrom(eventType));
+        return of(eventType, eventCancellability(eventType));
     }
 
     public static <E, K> EventBusJS<E, K> of(Class<E> eventType, boolean cancellable) {
@@ -47,6 +48,11 @@ public class EventBusJS<EVENT, KEY> implements ProxyExecutable {
                 : EventBus.create(eventType);
         }
         return new EventBusJS<>(bus);
+    }
+
+    /// [NekoCancellableEvent] for custom event, [ICancellableEvent] for redirected forge event
+    public static boolean eventCancellability(Class<?> c) {
+        return NekoCancellableEvent.class.isAssignableFrom(c) || ICancellableEvent.class.isAssignableFrom(c);
     }
 
     private final EventBus<EVENT> bus;

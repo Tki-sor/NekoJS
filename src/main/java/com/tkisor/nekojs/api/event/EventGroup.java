@@ -56,19 +56,19 @@ public class EventGroup {
     }
 
     public <E, K> EventBusJS<E, K> server(String name, Class<E> type, DispatchKey<E, K> dispatchKey) {
-        return add(name, ScriptType.SERVER, EventBusJS.of(type, NekoCancellableEvent.testType(type), dispatchKey));
+        return add(name, ScriptType.SERVER, EventBusJS.of(type, EventBusJS.eventCancellability(type), dispatchKey));
     }
 
     public <E, K> EventBusJS<E, K> client(String name, Class<E> type, DispatchKey<E, K> dispatchKey) {
-        return add(name, ScriptType.CLIENT, EventBusJS.of(type, NekoCancellableEvent.testType(type), dispatchKey));
+        return add(name, ScriptType.CLIENT, EventBusJS.of(type, EventBusJS.eventCancellability(type), dispatchKey));
     }
 
     public <E, K> EventBusJS<E, K> startup(String name, Class<E> type, DispatchKey<E, K> dispatchKey) {
-        return add(name, ScriptType.STARTUP, EventBusJS.of(type, NekoCancellableEvent.testType(type), dispatchKey));
+        return add(name, ScriptType.STARTUP, EventBusJS.of(type, EventBusJS.eventCancellability(type), dispatchKey));
     }
 
     public <E, K> EventBusJS<E, K> common(String name, Class<E> type, DispatchKey<E, K> dispatchKey) {
-        return add(name, ScriptType.COMMON, EventBusJS.of(type, NekoCancellableEvent.testType(type), dispatchKey));
+        return add(name, ScriptType.COMMON, EventBusJS.of(type, EventBusJS.eventCancellability(type), dispatchKey));
     }
 
     public <BUS extends EventBusJS<?, ?>> BUS add(String name, ScriptType scriptType, BUS bus) {
