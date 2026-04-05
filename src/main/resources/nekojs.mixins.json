@@ -7,6 +7,8 @@
     "RecipeManagerMixin",
     "ReloadableServerResourcesMixin",
     "inject.MixinEntity",
+    "inject.MixinItemStack",
+    "inject.MixinLevel",
     "inject.MixinLivingEntity",
     "inject.MixinMutableComponent",
     "inject.MixinPlayer"
