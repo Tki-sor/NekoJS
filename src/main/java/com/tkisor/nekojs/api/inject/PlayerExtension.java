@@ -16,9 +16,7 @@ public interface PlayerExtension {
         return Commands.LEVEL_GAMEMASTERS.check(neko$self().permissions());
     }
 
-    default void give(ItemStack item) {
-        if (!neko$self().getInventory().add(item)) {
-            neko$self().drop(item, false);
-        }
+    default void neko$give(ItemStack stack) {
+        neko$self().getInventory().placeItemBackInInventory(stack);
     }
 }
