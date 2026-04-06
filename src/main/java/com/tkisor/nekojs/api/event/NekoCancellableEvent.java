@@ -6,7 +6,4 @@ package com.tkisor.nekojs.api.event;
  */
 public interface NekoCancellableEvent {
 
-    static boolean testType(Class<?> type) {
-        return NekoCancellableEvent.class.isAssignableFrom(type);
-    }
 }

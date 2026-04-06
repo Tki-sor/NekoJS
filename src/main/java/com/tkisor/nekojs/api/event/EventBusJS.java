@@ -8,6 +8,7 @@ import com.tkisor.nekojs.utils.event.EventListenerToken;
 import com.tkisor.nekojs.utils.event.dispatch.DispatchCancellableEventBus;
 import com.tkisor.nekojs.utils.event.dispatch.DispatchEventBus;
 import com.tkisor.nekojs.utils.event.dispatch.DispatchKey;
+import net.neoforged.bus.api.ICancellableEvent;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
@@ -24,7 +25,7 @@ import java.util.function.Predicate;
  */
 public class EventBusJS<EVENT, KEY> implements ProxyExecutable {
     public static <E, K> EventBusJS<E, K> of(Class<E> eventType) {
-        return of(eventType, NekoCancellableEvent.class.isAssignableFrom(eventType));
+        return of(eventType, eventCancellability(eventType));
     }
 
     public static <E, K> EventBusJS<E, K> of(Class<E> eventType, boolean cancellable) {
@@ -47,6 +48,11 @@ public class EventBusJS<EVENT, KEY> implements ProxyExecutable {
                 : EventBus.create(eventType);
         }
         return new EventBusJS<>(bus);
+    }
+
+    /// [NekoCancellableEvent] for custom event, [ICancellableEvent] for redirected forge event
+    public static boolean eventCancellability(Class<?> c) {
+        return NekoCancellableEvent.class.isAssignableFrom(c) || ICancellableEvent.class.isAssignableFrom(c);
     }
 
     private final EventBus<EVENT> bus;
@@ -134,7 +140,14 @@ public class EventBusJS<EVENT, KEY> implements ProxyExecutable {
 
     private EventListenerToken<EVENT> registerCancellable(Value listener) {
         var bus = (CancellableEventBus<EVENT>) this.bus;
-        return bus.listen((Predicate<EVENT>) listener.as(Predicate.class));
+        return bus.listen(event -> {
+            if (listener.canExecute()) {
+                Value result = listener.execute(event);
+                // 如果脚本没有 return 值，或者返回了其他类型，默认视为 false (不取消)
+                return result.isBoolean() && result.asBoolean();
+            }
+            return false;
+        });
     }
 
     private EventListenerToken<EVENT> registerDispatch(Value listener, Value key) {
@@ -149,7 +162,14 @@ public class EventBusJS<EVENT, KEY> implements ProxyExecutable {
         var bus = (DispatchCancellableEventBus<EVENT, KEY>) this.bus;
         return bus.listen(
             key.as(bus.dispatchKey().keyType()),
-            (Predicate<EVENT>) listener.as(Predicate.class)
+                // 也许这也可能有问题？
+                event -> {
+                    if (listener.canExecute()) {
+                        Value result = listener.execute(event);
+                        return result.isBoolean() && result.asBoolean();
+                    }
+                    return false;
+                }
         );
     }
 }
