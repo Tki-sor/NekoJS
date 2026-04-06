@@ -7,7 +7,7 @@ import net.minecraft.network.chat.TextColor;
 
 public class JSHighlighter {
 
-    // 🌟 GitHub Theme Dark 官方 HEX 色盘
+    // GitHub Theme Dark 官方 HEX 色盘
     private static final Style STYLE_DEFAULT  = Style.EMPTY.withColor(TextColor.fromRgb(0xC9D1D9)); // 乱码/普通文本/符号: 浅灰白
     private static final Style STYLE_STRING   = Style.EMPTY.withColor(TextColor.fromRgb(0xA5D6FF)); // 字符串: 浅蓝
     private static final Style STYLE_FUNCTION = Style.EMPTY.withColor(TextColor.fromRgb(0xD2A8FF)); // 函数/方法: 淡紫
@@ -16,7 +16,6 @@ public class JSHighlighter {
     private static final Style STYLE_COMMENT  = Style.EMPTY.withColor(TextColor.fromRgb(0x8B949E)); // 注释: 灰绿
     private static final Style STYLE_BUILTIN  = Style.EMPTY.withColor(TextColor.fromRgb(0x79C0FF)); // 内置对象 (RegExp等): 亮蓝
 
-    // 🌟 6层 括号层级彩虹配色定制版
     private static final Style[] BRACKET_STYLES = new Style[]{
             Style.EMPTY.withColor(TextColor.fromRgb(0x1E90FF)), // Level 1: 蓝色
             Style.EMPTY.withColor(TextColor.fromRgb(0x50C878)), // Level 2: 绿色

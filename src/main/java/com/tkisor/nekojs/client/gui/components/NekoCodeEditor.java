@@ -53,7 +53,6 @@ public class NekoCodeEditor {
     private double lastScroll = 0;
     private long lastEditTime = 0;
 
-    // 🌟 自动补全相关的状态和常量
     private static final String[] KEYWORDS = {
             "Array", "Block", "Boolean", "Client", "Entity", "Event", "Item", "JSON", "Level", "Math",
             "Number", "Object", "Player", "Promise", "Server", "String", "break", "case", "catch", "class",
@@ -62,7 +61,6 @@ public class NekoCodeEditor {
             "super", "switch", "this", "throw", "true", "try", "typeof", "undefined", "var", "void", "while", "yield"
     };
 
-    // 🌟 新增：基于文件内容的动态分词缓存
     private final Set<String> documentWords = new HashSet<>();
     private static final Pattern WORD_PATTERN = Pattern.compile("[a-zA-Z_$][a-zA-Z0-9_$]*");
 
@@ -70,8 +68,6 @@ public class NekoCodeEditor {
     private final List<String> suggestions = new ArrayList<>();
     private int suggestionIndex = 0;
     private int wordStartIdx = -1;
-
-    // 用于记录渲染时真实的屏幕坐标，供自动补全菜单使用
     private int acCursorDrawX = -1;
     private int acCursorDrawY = -1;
 
@@ -96,7 +92,7 @@ public class NekoCodeEditor {
 
         this.editorBox.setValue(this.originalScriptText);
         this.updateLineMap();
-        this.updateDocumentWords(this.originalScriptText); // 初始化分词
+        this.updateDocumentWords(this.originalScriptText);
 
         this.editorBox.textField.setCursorListener(() -> {
             if (!isRestoringHistory) {
@@ -118,7 +114,7 @@ public class NekoCodeEditor {
             lastEditTime = now;
             this.isDirty = !text.equals(this.originalScriptText);
             this.updateLineMap();
-            this.updateDocumentWords(text); // 文本改变时更新分词词库
+            this.updateDocumentWords(text);
             findMatchingBrackets();
             updateAutoComplete();
         });
@@ -127,13 +123,11 @@ public class NekoCodeEditor {
         this.setCursorAbsolute(0);
     }
 
-    // 🌟 新增：提取并更新当前文件的所有可用单词
     private void updateDocumentWords(String text) {
         documentWords.clear();
         Matcher m = WORD_PATTERN.matcher(text);
         while (m.find()) {
             String word = m.group();
-            // 过滤掉太短的字母（如纯粹的 i, j 等单字母变量），保持补全菜单的整洁
             if (word.length() > 2) {
                 documentWords.add(word);
             }
@@ -149,9 +143,7 @@ public class NekoCodeEditor {
         this.isDirty = false;
     }
 
-    public String getOriginalScriptText() {
-        return this.originalScriptText;
-    }
+    public String getOriginalScriptText() { return this.originalScriptText; }
 
     public void setOriginalScriptText(String text) {
         this.originalScriptText = text;
@@ -174,9 +166,7 @@ public class NekoCodeEditor {
         editorBox.setScrollAmount(Math.max(0, targetScroll));
     }
 
-    private void setCursorAbsolute(int pos) {
-        setSelection(pos, pos);
-    }
+    private void setCursorAbsolute(int pos) { setSelection(pos, pos); }
 
     public void setSelection(int cursor, int selectCursor) {
         int len = this.editorBox.getValue().length();
@@ -286,15 +276,9 @@ public class NekoCodeEditor {
             return true;
         }
 
-        if (isCtrlDown() && key == GLFW.GLFW_KEY_SLASH) {
-            return handleToggleComment();
-        }
-        if (isCtrlDown() && key == GLFW.GLFW_KEY_LEFT_BRACKET) {
-            return handleIndent(true);
-        }
-        if (isCtrlDown() && key == GLFW.GLFW_KEY_RIGHT_BRACKET) {
-            return handleIndent(false);
-        }
+        if (isCtrlDown() && key == GLFW.GLFW_KEY_SLASH) { return handleToggleComment(); }
+        if (isCtrlDown() && key == GLFW.GLFW_KEY_LEFT_BRACKET) { return handleIndent(true); }
+        if (isCtrlDown() && key == GLFW.GLFW_KEY_RIGHT_BRACKET) { return handleIndent(false); }
 
         if (key == GLFW.GLFW_KEY_TAB) {
             int c1 = editorBox.textField.cursor();
@@ -313,7 +297,6 @@ public class NekoCodeEditor {
         return false;
     }
 
-    // 🌟 核心修改：整合系统保留字和文件内提取的单词
     private void updateAutoComplete() {
         int cursor = editorBox.textField.cursor();
         String text = editorBox.getValue();
@@ -346,7 +329,6 @@ public class NekoCodeEditor {
 
         Set<String> addedWords = new HashSet<>();
 
-        // 1. 优先加载系统关键字
         for (String kw : KEYWORDS) {
             if (kw.startsWith(prefix) && !kw.equals(prefix)) {
                 suggestions.add(kw);
@@ -354,17 +336,14 @@ public class NekoCodeEditor {
             }
         }
 
-        // 2. 然后加载从当前文件内容里推断出来的变量名/函数名
         List<String> docSuggestions = new ArrayList<>();
         for (String dw : documentWords) {
-            // 防止已经加过的保留字重复，同时也过滤掉你正在打的这个不完整单词自身
             if (dw.startsWith(prefix) && !dw.equals(prefix) && !addedWords.contains(dw)) {
                 docSuggestions.add(dw);
                 addedWords.add(dw);
             }
         }
 
-        // 3. 对提取出的文件单词按字母排序，显得更工整
         docSuggestions.sort(String::compareToIgnoreCase);
         suggestions.addAll(docSuggestions);
 

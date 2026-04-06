@@ -1,6 +1,6 @@
 package com.tkisor.nekojs.client.gui;
 
-import com.tkisor.nekojs.client.gui.components.NekoTabbedEditor;
+import com.tkisor.nekojs.client.gui.components.*;
 import com.tkisor.nekojs.core.fs.NekoJSPaths;
 import com.tkisor.nekojs.network.*;
 import com.tkisor.nekojs.network.dto.ErrorSummaryDTO;
@@ -29,7 +29,6 @@ public class NekoErrorDashboardScreen extends Screen {
     private ErrorListWidget listWidget;
     private EditBox searchBox;
     private StackTraceList stackList;
-    private ContextMenu activeContextMenu = null;
 
     private ErrorSummaryDTO selectedError = null;
     private FilterType currentFilter = FilterType.ALL;
@@ -40,34 +39,35 @@ public class NekoErrorDashboardScreen extends Screen {
     private NekoTabbedEditor tabbedEditor = null;
 
     private int layoutRightX, layoutRightW, layoutContentY, layoutContentH;
-    private String toastMessage = "";
-    private long toastTime = 0;
     private long openTime;
 
     private final int[] filterCounts = new int[FilterType.VALUES.length];
     private final String[] filterLabels = new String[FilterType.VALUES.length];
+
+    private final NekoToast toast = new NekoToast();
+    private NekoModal modal;
+    private NekoContextMenu activeContextMenu = null;
 
     private enum FilterType {
         ALL("全部", 0xFFFFFFFF), RUNTIME("运行", 0xFFE5534B),
         SYNTAX("语法", 0xFFF2A134), OTHER("其他", 0xFF748394);
         final String label; final int color;
         FilterType(String label, int color) { this.label = label; this.color = color; }
-
         public static final FilterType[] VALUES = values();
     }
 
-    private record MenuCategory(String name, List<MenuItem> items) {}
+    private record MenuCategory(String name, List<NekoContextMenu.MenuItem> items) {}
     private final List<MenuCategory> menuCategories = List.of(
             new MenuCategory("文件", List.of(
-                    new MenuItem("[S] 保存当前修改 (Ctrl+S)", this::actionSaveActiveTab),
-                    new MenuItem("[D] 在外部资源管理器中打开", this::actionLocate),
-                    new MenuItem("[X] 退出面板", this::onClose)
+                    new NekoContextMenu.MenuItem("[S] 保存当前修改 (Ctrl+S)", this::actionSaveActiveTab),
+                    new NekoContextMenu.MenuItem("[D] 在外部资源管理器中打开", this::actionLocate),
+                    new NekoContextMenu.MenuItem("[X] 退出面板", this::onClose)
             )),
             new MenuCategory("云端同步 (Sync)", List.of(
-                    new MenuItem("[↑] 将当前脚本推送到服务端", this::actionSyncUploadCurrent),
-                    new MenuItem("[↓] 从服务端拉取覆盖当前脚本", this::actionSyncDownloadCurrent),
-                    new MenuItem("[↑↑] 强制推送所有本地脚本 (危险)", this::actionSyncUploadAll),
-                    new MenuItem("[↓↓] 强制拉取服务端所有脚本 (危险)", this::actionSyncDownloadAll)
+                    new NekoContextMenu.MenuItem("[↑] 将当前脚本推送到服务端", this::actionSyncUploadCurrent),
+                    new NekoContextMenu.MenuItem("[↓] 从服务端拉取覆盖当前脚本", this::actionSyncDownloadCurrent),
+                    new NekoContextMenu.MenuItem("[↑↑] 强制推送所有本地脚本 (危险)", this::actionSyncUploadAll),
+                    new NekoContextMenu.MenuItem("[↓↓] 强制拉取服务端所有脚本 (危险)", this::actionSyncDownloadAll)
             ))
     );
 
@@ -89,6 +89,11 @@ public class NekoErrorDashboardScreen extends Screen {
     protected void init() {
         super.init();
         this.openTime = System.currentTimeMillis();
+
+        if (this.modal == null) {
+            this.modal = new NekoModal(this.font, () -> this.setFocused(null));
+        }
+
         this.buildDashboardLayout();
     }
 
@@ -114,7 +119,7 @@ public class NekoErrorDashboardScreen extends Screen {
             this.listWidget = new ErrorListWidget(this.minecraft, leftW, layoutContentH, layoutContentY, 36);
             this.listWidget.setX(margin);
             this.refreshList();
-            this.listWidget.setScrollAmount(oldScroll); // 恢复重绘前的滚动条位置
+            this.listWidget.setScrollAmount(oldScroll);
             this.addRenderableWidget(this.listWidget);
         }
 
@@ -135,9 +140,15 @@ public class NekoErrorDashboardScreen extends Screen {
 
             if (tabbedEditor.getActiveTab() != null && tabbedEditor.getActiveTab().editor != null) {
                 this.addRenderableWidget(tabbedEditor.getActiveTab().editor.getWidget());
-                this.setFocused(tabbedEditor.getActiveTab().editor.getWidget());
+                if (!modal.isOpen()) {
+                    this.setFocused(tabbedEditor.getActiveTab().editor.getWidget());
+                }
             }
         }
+
+        this.modal.updateBounds(this.width, this.height);
+        this.addRenderableWidget(this.modal.getWidget());
+        if (this.modal.isInputMode()) this.setFocused(this.modal.getWidget());
     }
 
     private String getInitialTextForPath(String targetPath) {
@@ -165,8 +176,6 @@ public class NekoErrorDashboardScreen extends Screen {
                 this.listWidget.add(new ErrorEntry(dto));
             }
         }
-        // 🌟 修复：每次重新填充列表内容时，将滚动条强制归零。
-        // （不用担心重绘窗口时会丢失进度，因为 buildDashboardLayout 会在调用此方法后立即重新赋值 oldScroll）
         this.listWidget.setScrollAmount(0);
     }
 
@@ -181,12 +190,9 @@ public class NekoErrorDashboardScreen extends Screen {
                     this.stackList.addEntry(new TextLineEntry("", 0xFFCCCCCC));
                     return;
                 }
-
                 int color = rawLine.contains("Error") ? 0xFFE5534B : (rawLine.trim().startsWith("at") ? 0xFF888888 : 0xFFCCCCCC);
-
                 List<net.minecraft.network.chat.FormattedText> wrappedLines =
                         this.font.getSplitter().splitLines(rawLine, maxLineW, net.minecraft.network.chat.Style.EMPTY);
-
                 for (net.minecraft.network.chat.FormattedText wrapped : wrappedLines) {
                     this.stackList.addEntry(new TextLineEntry(wrapped.getString(), color));
                 }
@@ -202,18 +208,18 @@ public class NekoErrorDashboardScreen extends Screen {
     private void actionLocate() {
         if (selectedError == null) return;
         Util.getPlatform().openFile(NekoJSPaths.ROOT.resolve(selectedError.path()).toFile());
-        showToast("§a✔ 尝试打开文件");
+        toast.show("§a✔ 尝试打开文件");
     }
 
     private void actionLog() {
         Util.getPlatform().openFile(NekoJSPaths.GAME_DIR.resolve("logs/latest.log").toFile());
-        showToast("§a✔ 打开 latest.log");
+        toast.show("§a✔ 打开 latest.log");
     }
 
     private void actionCopy() {
         if (selectedError == null) return;
         Minecraft.getInstance().keyboardHandler.setClipboard(selectedError.fullDetails());
-        showToast("§a✔ 已存入剪贴板");
+        toast.show("§a✔ 已存入剪贴板");
     }
 
     private void actionSaveActiveTab() {
@@ -227,61 +233,56 @@ public class NekoErrorDashboardScreen extends Screen {
         try {
             Path path = NekoJSPaths.ROOT.resolve(tab.path);
             Files.writeString(path, tab.editor.getValue());
-            showToast("§a✔ 已保存 " + tab.path);
+            toast.show("§a✔ 已保存 " + tab.path);
             tab.editor.markSaved();
-        } catch (Exception e) { showToast("§c✖ 保存失败: " + e.getMessage()); }
+        } catch (Exception e) { toast.show("§c✖ 保存失败: " + e.getMessage()); }
     }
 
     public void loadServerScript(String content) {
         if (isEditing && tabbedEditor != null && tabbedEditor.getActiveTab() != null) {
             tabbedEditor.getActiveTab().editor.getWidget().setValue(content);
             tabbedEditor.getActiveTab().editor.markSaved();
-            this.showToast("§a✔ 已成功从服务端拉取代码");
+            this.toast.show("§a✔ 已成功从服务端拉取代码");
         }
     }
 
     private void actionSyncUploadCurrent() {
         if (!this.isEditing || tabbedEditor == null || tabbedEditor.getActiveTab() == null) {
-            this.showToast("§c❌ 错误：请先进入 [编辑] 模式！");
+            this.toast.show("§c❌ 错误：请先进入 [编辑] 模式！");
             return;
         }
         ClientPacketDistributor.sendToServer(new SaveScriptPacket(tabbedEditor.getActiveTab().path, tabbedEditor.getActiveTab().editor.getValue()));
-        showToast("§e[↑] 正在推送到服务端...");
+        toast.show("§e[↑] 正在推送到服务端...");
     }
 
     private void actionSyncDownloadCurrent() {
         if (!this.isEditing || tabbedEditor == null || tabbedEditor.getActiveTab() == null) {
-            this.showToast("§c❌ 错误：请先进入 [编辑] 模式！");
+            this.toast.show("§c❌ 错误：请先进入 [编辑] 模式！");
             return;
         }
         ClientPacketDistributor.sendToServer(new FetchScriptRequestPacket(tabbedEditor.getActiveTab().path));
-        showToast("§b[↓] 正在请求拉取代码...");
+        toast.show("§b[↓] 正在请求拉取代码...");
     }
 
     private void actionSyncUploadAll() {
-        showToast("§e[↑↑] 正在扫描本地文件并推送...");
+        toast.show("§e[↑↑] 正在扫描本地文件并推送...");
         Map<String, String> localFiles = NekoJSNetwork.collectAllValidScripts(NekoJSPaths.ROOT);
 
         if (localFiles.isEmpty()) {
-            showToast("§c✖ 本地 nekojs 目录为空或不存在 js 文件！");
+            toast.show("§c✖ 本地 nekojs 目录为空或不存在 js 文件！");
             return;
         }
         ClientPacketDistributor.sendToServer(new UploadAllScriptsPacket(localFiles));
     }
 
     private void actionSyncDownloadAll() {
-        showToast("§b[↓↓] 正在请求拉取所有服务端代码...");
+        toast.show("§b[↓↓] 正在请求拉取所有服务端代码...");
         ClientPacketDistributor.sendToServer(new FetchAllScriptsRequestPacket());
-    }
-
-    public void showToast(String msg) {
-        this.toastMessage = msg;
-        this.toastTime = System.currentTimeMillis() + 2000;
     }
 
     public void onSyncFeedback(boolean success, String message) {
         String prefix = success ? "§a✔ " : "§c✖ ";
-        this.showToast(prefix + message);
+        this.toast.show(prefix + message);
 
         if (success && this.isEditing && tabbedEditor != null && tabbedEditor.getActiveTab() != null) {
             tabbedEditor.getActiveTab().editor.markSaved();
@@ -342,7 +343,7 @@ public class NekoErrorDashboardScreen extends Screen {
             graphics.fill(layoutRightX, layoutContentY, layoutRightX + layoutRightW, layoutContentY + layoutContentH, 0xFF1E1E1E);
         }
 
-        boolean blockEditorHover = (activeContextMenu != null) || (tabbedEditor != null && tabbedEditor.isHoveringDropdown(mouseX, mouseY));
+        boolean blockEditorHover = modal.isOpen() || (activeContextMenu != null) || (tabbedEditor != null && tabbedEditor.isHoveringDropdown(mouseX, mouseY));
         super.extractRenderState(graphics, blockEditorHover ? -999 : mouseX, blockEditorHover ? -999 : mouseY, partialTick);
 
         renderHeaderButtons(graphics, mouseX, mouseY);
@@ -352,16 +353,20 @@ public class NekoErrorDashboardScreen extends Screen {
         graphics.fill(layoutRightX, layoutContentY, layoutRightX + 2, layoutContentY + layoutContentH, decorColor);
         graphics.outline(layoutRightX, layoutContentY, layoutRightW, layoutContentH, 0xFF333333);
 
-        if (System.currentTimeMillis() < toastTime) {
-            float yAnim = Mth.clamp((2000f - (toastTime - System.currentTimeMillis())) / 150f, 0, 1);
-            int tw = this.font.width(toastMessage) + 20;
-            int ty = this.height - 45 - (int)(15 * yAnim);
-            graphics.fill(this.width/2-tw/2, ty, this.width/2+tw/2, ty+16, 0xCC000000);
-            graphics.outline(this.width/2-tw/2, ty, tw, 16, 0xFF44FF44);
-            graphics.centeredText(this.font, toastMessage, this.width / 2, ty + 4, -1);
-        }
-
+        this.toast.render(graphics, this.font, this.width, this.height);
         if (this.activeContextMenu != null) this.activeContextMenu.render(graphics, mouseX, mouseY);
+        this.modal.render(graphics, mouseX, mouseY, partialTick, this.width, this.height);
+    }
+
+    private boolean handleHeaderButton(GuiGraphicsExtractor g, String text, int x, int mx, int my, boolean isClickAction) {
+        int w = this.font.width(text);
+        int targetX = x - w - 5;
+        boolean hov = mx >= targetX && mx <= targetX + w && my >= 38 && my <= 48;
+        if (!isClickAction && g != null) {
+            g.text(this.font, text, targetX, 38, -1);
+            if (hov) g.fill(targetX, 38 + this.font.lineHeight, targetX + w, 38 + this.font.lineHeight + 1, 0xFFFFFFFF);
+        }
+        return hov;
     }
 
     private void renderHeaderButtons(GuiGraphicsExtractor g, int mx, int my) {
@@ -372,34 +377,30 @@ public class NekoErrorDashboardScreen extends Screen {
             g.text(this.font, "§8目标: §e" + selectedError.path(), layoutRightX + 5, 38, -1);
         }
 
-        int curX = layoutRightX + layoutRightW - 10;
         int closeX = this.width - 25;
         g.text(this.font, (mx >= closeX && mx <= closeX + 10 && my >= 16 && my <= 26) ? "§c✖" : "§7✖", closeX, 16, -1);
         int maxX = closeX - 25;
         g.text(this.font, (mx >= maxX && mx <= maxX + 10 && my >= 16 && my <= 26) ? "§f" + (isMaximized ? "🗗" : "⛶") : "§7" + (isMaximized ? "🗗" : "⛶"), maxX, 16, -1);
 
+        int curX = layoutRightX + layoutRightW - 10;
         if (isEditing) {
-            curX = renderLink(g, "§c[退出编辑]", curX, mx, my);
-            curX = renderLink(g, isDirty ? "§e[保存当前*]" : "§a[保存当前]", curX, mx, my);
+            handleHeaderButton(g, "§c[退出编辑]", curX, mx, my, false);
+            curX -= this.font.width("§c[退出编辑]") + 5;
+            handleHeaderButton(g, isDirty ? "§e[保存当前*]" : "§a[保存当前]", curX, mx, my, false);
         } else {
-            curX = renderLink(g, "§7[复制]", curX, mx, my);
-            curX = renderLink(g, "§b[日志]", curX, mx, my);
-            curX = renderLink(g, "§e[定位]", curX, mx, my);
-            curX = renderLink(g, "§a[编辑]", curX, mx, my);
+            handleHeaderButton(g, "§7[复制]", curX, mx, my, false);
+            curX -= this.font.width("§7[复制]") + 5;
+            handleHeaderButton(g, "§b[日志]", curX, mx, my, false);
+            curX -= this.font.width("§b[日志]") + 5;
+            handleHeaderButton(g, "§e[定位]", curX, mx, my, false);
+            curX -= this.font.width("§e[定位]") + 5;
+            handleHeaderButton(g, "§a[编辑]", curX, mx, my, false);
         }
-    }
-
-    private int renderLink(GuiGraphicsExtractor g, String text, int x, int mx, int my) {
-        int w = this.font.width(text);
-        int targetX = x - w - 5;
-        boolean hov = mx >= targetX && mx <= targetX + w && my >= 38 && my <= 48;
-        g.text(this.font, text, targetX, 38, -1);
-        if (hov) g.fill(targetX, 38 + this.font.lineHeight, targetX + w, 38 + this.font.lineHeight + 1, 0xFFFFFFFF);
-        return targetX;
     }
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        if (modal.isOpen() || activeContextMenu != null) return true;
         if (this.isEditing && tabbedEditor != null) {
             if (tabbedEditor.mouseScrolled(mouseX, mouseY, scrollX, scrollY)) return true;
         }
@@ -408,6 +409,10 @@ public class NekoErrorDashboardScreen extends Screen {
 
     @Override
     public boolean keyPressed(KeyEvent event) {
+        if (modal.isOpen()) {
+            if (modal.keyPressed(event)) return true;
+            return super.keyPressed(event);
+        }
         if (this.activeContextMenu != null && event.isEscape()) {
             this.activeContextMenu = null; return true;
         }
@@ -424,6 +429,7 @@ public class NekoErrorDashboardScreen extends Screen {
 
     @Override
     public boolean charTyped(CharacterEvent event) {
+        if (modal.isOpen()) return super.charTyped(event);
         if (this.activeContextMenu != null) return false;
         if (this.isEditing && tabbedEditor != null) {
             if (tabbedEditor.charTyped((char) event.codepoint())) return true;
@@ -433,6 +439,11 @@ public class NekoErrorDashboardScreen extends Screen {
 
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        if (modal.isOpen()) {
+            if (modal.mouseClicked(event, this.width, this.height)) return true;
+            return true;
+        }
+
         if (this.activeContextMenu != null) {
             this.activeContextMenu.mouseClicked(event.x(), event.y(), event.button());
             this.activeContextMenu = null;
@@ -444,7 +455,7 @@ public class NekoErrorDashboardScreen extends Screen {
             for (MenuCategory cat : menuCategories) {
                 int w = this.font.width(cat.name()) + 8;
                 if (event.x() >= menuX && event.x() <= menuX + w) {
-                    this.activeContextMenu = new ContextMenu(menuX, 14, cat.items());
+                    this.activeContextMenu = new NekoContextMenu(this.font, menuX, 14, this.width, this.height, cat.items());
                     return true;
                 }
                 menuX += w;
@@ -462,23 +473,30 @@ public class NekoErrorDashboardScreen extends Screen {
 
         if (selectedError != null && event.y() >= 38 && event.y() <= 48) {
             int curX = layoutRightX + layoutRightW - 10;
+            int mx = (int) event.x();
+            int my = (int) event.y();
+
             if (isEditing) {
-                int cw = this.font.width("§c[退出编辑]"); curX = curX - cw - 5;
-                if (event.x() >= curX && event.x() <= curX + cw) { this.isEditing = false; buildDashboardLayout(); return true; }
+                if (handleHeaderButton(null, "§c[退出编辑]", curX, mx, my, true)) {
+                    this.isEditing = false; buildDashboardLayout(); return true;
+                }
+                curX -= this.font.width("§c[退出编辑]") + 5;
 
                 boolean isDirty = tabbedEditor != null && tabbedEditor.getActiveTab() != null && tabbedEditor.getActiveTab().editor.isDirty();
-                int sw = this.font.width(isDirty ? "§e[保存当前*]" : "§a[保存当前]"); curX = curX - sw - 5;
-                if (event.x() >= curX && event.x() <= curX + sw) { actionSaveActiveTab(); return true; }
+                if (handleHeaderButton(null, isDirty ? "§e[保存当前*]" : "§a[保存当前]", curX, mx, my, true)) {
+                    actionSaveActiveTab(); return true;
+                }
             } else {
-                int cw1 = this.font.width("§7[复制]"); curX = curX - cw1 - 5;
-                if (event.x() >= curX && event.x() <= curX + cw1) { actionCopy(); return true; }
-                int cw2 = this.font.width("§b[日志]"); curX = curX - cw2 - 5;
-                if (event.x() >= curX && event.x() <= curX + cw2) { actionLog(); return true; }
-                int cw3 = this.font.width("§e[定位]"); curX = curX - cw3 - 5;
-                if (event.x() >= curX && event.x() <= curX + cw3) { actionLocate(); return true; }
+                if (handleHeaderButton(null, "§7[复制]", curX, mx, my, true)) { actionCopy(); return true; }
+                curX -= this.font.width("§7[复制]") + 5;
 
-                int cw4 = this.font.width("§a[编辑]"); curX = curX - cw4 - 5;
-                if (event.x() >= curX && event.x() <= curX + cw4) { openTab(selectedError.path()); return true; }
+                if (handleHeaderButton(null, "§b[日志]", curX, mx, my, true)) { actionLog(); return true; }
+                curX -= this.font.width("§b[日志]") + 5;
+
+                if (handleHeaderButton(null, "§e[定位]", curX, mx, my, true)) { actionLocate(); return true; }
+                curX -= this.font.width("§e[定位]") + 5;
+
+                if (handleHeaderButton(null, "§a[编辑]", curX, mx, my, true)) { openTab(selectedError.path()); return true; }
             }
         }
 
@@ -487,7 +505,6 @@ public class NekoErrorDashboardScreen extends Screen {
             for (FilterType type : FilterType.VALUES) {
                 int lw = this.font.width(filterLabels[type.ordinal()]);
                 if (event.x() >= tabX && event.x() <= tabX + lw && event.y() >= tabY && event.y() <= tabY + 12) {
-                    // 当切换分类时，除了更新 filter 外，我们强制调用一次鼠标点击刷新
                     this.currentFilter = type;
                     this.refreshList();
                     return true;
@@ -532,10 +549,11 @@ public class NekoErrorDashboardScreen extends Screen {
                 }
                 return true;
             } else if (event.button() == 1) {
-                NekoErrorDashboardScreen.this.activeContextMenu = new ContextMenu((int)event.x(), (int)event.y(), List.of(
-                        new MenuItem("⛶ 全屏查看", () -> { selectError(dto); isMaximized = true; buildDashboardLayout(); }),
-                        new MenuItem("📝 在标签页打开", () -> { NekoErrorDashboardScreen.this.openTab(dto.path()); }),
-                        new MenuItem("📂 使用系统外部应用打开", () -> { Util.getPlatform().openFile(NekoJSPaths.ROOT.resolve(dto.path()).toFile()); showToast("§a✔ 指令已发送"); })
+                selectError(dto);
+                NekoErrorDashboardScreen.this.activeContextMenu = new NekoContextMenu(NekoErrorDashboardScreen.this.font, (int)event.x(), (int)event.y(), NekoErrorDashboardScreen.this.width, NekoErrorDashboardScreen.this.height, List.of(
+                        new NekoContextMenu.MenuItem("⛶ 全屏查看", () -> { isMaximized = true; buildDashboardLayout(); }),
+                        new NekoContextMenu.MenuItem("📝 在标签页打开", () -> { NekoErrorDashboardScreen.this.openTab(dto.path()); }),
+                        new NekoContextMenu.MenuItem("📂 使用系统外部应用打开", () -> { Util.getPlatform().openFile(NekoJSPaths.ROOT.resolve(dto.path()).toFile()); toast.show("§a✔ 指令已发送"); })
                 ));
                 return true;
             }
@@ -568,31 +586,4 @@ public class NekoErrorDashboardScreen extends Screen {
         }
         @Override public Component getNarration() { return Component.empty(); }
     }
-
-    private class ContextMenu {
-        int x, y, width, height; List<MenuItem> items;
-        public ContextMenu(int sx, int sy, List<MenuItem> items) {
-            this.items = items;
-            this.height = items.size() * 18 + 6;
-            int maxW = 120;
-            for(MenuItem item : items) { maxW = Math.max(maxW, NekoErrorDashboardScreen.this.font.width(item.label) + 20); }
-            this.width = maxW;
-            this.x = Math.min(sx, NekoErrorDashboardScreen.this.width - width - 5);
-            this.y = Math.min(sy, NekoErrorDashboardScreen.this.height - height - 5);
-        }
-        public void render(GuiGraphicsExtractor g, int mx, int my) {
-            g.fill(x, y, x+width, y+height, 0xFF18181B); g.outline(x, y, width, height, 0xFF3F3F46);
-            for (int i = 0; i < items.size(); i++) {
-                int iy = y + 3 + i * 18; boolean h = mx >= x && mx <= x+width && my >= iy && my < iy+18;
-                if (h) g.fill(x+2, iy, x+width-2, iy+18, 0xFF27272A);
-                g.text(NekoErrorDashboardScreen.this.font, items.get(i).label, x+8, iy+5, h ? -1 : 0xFFA1A1AA);
-            }
-        }
-        public boolean mouseClicked(double mx, double my, int b) {
-            if (b == 0 && mx >= x && mx <= x+width && my >= y && my <= y+height) {
-                int index = ((int)my - y - 3) / 18; if (index >= 0 && index < items.size()) items.get(index).action.run(); return true;
-            } return false;
-        }
-    }
-    private record MenuItem(String label, Runnable action) {}
 }

@@ -2,13 +2,8 @@ package com.tkisor.nekojs.client.gui;
 
 import com.mojang.blaze3d.platform.InputConstants;
 import com.mojang.blaze3d.platform.Window;
-import com.tkisor.nekojs.client.gui.components.NekoCodeEditor;
-import com.tkisor.nekojs.client.gui.components.NekoTabbedEditor;
+import com.tkisor.nekojs.client.gui.components.*;
 import com.tkisor.nekojs.core.fs.NekoJSPaths;
-import com.tkisor.nekojs.network.FetchAllScriptsRequestPacket;
-import com.tkisor.nekojs.network.NekoJSNetwork;
-import com.tkisor.nekojs.network.SaveScriptPacket;
-import com.tkisor.nekojs.network.UploadAllScriptsPacket;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.EditBox;
@@ -19,15 +14,12 @@ import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
-import net.minecraft.util.Util;
-import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 import org.lwjgl.glfw.GLFW;
 
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
-import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
@@ -50,7 +42,6 @@ public class NekoWorkspaceScreen extends Screen {
     private FileNode treeRoot;
     private FileNode searchRoot;
     private String selectedFilePath = null;
-
     private int selectedMatchStart = -1;
 
     private boolean isSidebarOpen = true;
@@ -65,20 +56,15 @@ public class NekoWorkspaceScreen extends Screen {
     private int rightX;
     private final int topY = 20;
 
-    private String toastMessage = "";
-    private long toastTime = 0;
-
-    private ContextMenu activeContextMenu = null;
-    private boolean isModalOpen = false;
-    private String modalTitle = "";
-    private EditBox modalInput;
-    private Consumer<String> modalCallback;
+    private final NekoToast toast = new NekoToast();
+    private NekoModal modal;
+    private NekoMenuBar menuBar;
+    private NekoContextMenu activeContextMenu = null;
 
     public NekoWorkspaceScreen() {
         super(Component.literal("NekoJS Workspace"));
     }
 
-    // 🌟 新增：替代被移除的 Screen.hasShiftDown()
     private static boolean hasShiftDown() {
         Window window = Minecraft.getInstance().getWindow();
         return InputConstants.isKeyDown(window, GLFW.GLFW_KEY_LEFT_SHIFT) ||
@@ -88,6 +74,16 @@ public class NekoWorkspaceScreen extends Screen {
     @Override
     protected void init() {
         super.init();
+        if (this.modal == null) {
+            this.modal = new NekoModal(this.font, () -> this.setFocused(null));
+        }
+        if (this.menuBar == null) {
+            this.menuBar = NekoWorkspaceActions.createSharedMenuBar(
+                    () -> this.tabbedEditor, this.toast,
+                    () -> { scanLocalFiles(); refreshFileList(); },
+                    this::onClose
+            );
+        }
         scanLocalFiles();
         buildWorkspaceLayout();
     }
@@ -118,7 +114,6 @@ public class NekoWorkspaceScreen extends Screen {
                 this.searchBox.setHint(Component.literal("§8搜索..."));
                 this.searchBox.setValue(oldSearch);
                 this.searchBox.setTextColor(0xFFFFFFFF);
-
                 this.searchBox.setResponder(s -> { buildSearchTree(); refreshFileList(); });
                 this.addRenderableWidget(this.searchBox);
 
@@ -142,7 +137,7 @@ public class NekoWorkspaceScreen extends Screen {
 
         if (this.tabbedEditor == null) {
             this.tabbedEditor = new NekoTabbedEditor(this.font, rightX, topY, this.width - rightX, contentH,
-                    this::doSaveTab,
+                    tab -> NekoWorkspaceActions.saveTab(tab, this.toast),
                     this::buildWorkspaceLayout,
                     this::buildWorkspaceLayout);
         } else {
@@ -151,21 +146,14 @@ public class NekoWorkspaceScreen extends Screen {
 
         if (this.tabbedEditor.getActiveTab() != null && this.tabbedEditor.getActiveTab().editor != null) {
             this.addRenderableWidget(this.tabbedEditor.getActiveTab().editor.getWidget());
-            if (activeActivity != 1 && !isModalOpen) {
+            if (activeActivity != 1 && !modal.isOpen()) {
                 this.setFocused(this.tabbedEditor.getActiveTab().editor.getWidget());
             }
         }
 
-        int mw = 240;
-        int mh = 80;
-        int mx_ = this.width / 2 - mw / 2;
-        int my_ = this.height / 2 - mh / 2;
-        this.modalInput = new EditBox(this.font, mx_ + 10, my_ + 28, mw - 20, 18, Component.empty());
-        this.modalInput.setTextColor(0xFFFFFFFF);
-        this.modalInput.visible = isModalOpen;
-        this.modalInput.active = isModalOpen;
-        this.addRenderableWidget(this.modalInput);
-        if (isModalOpen) this.setFocused(this.modalInput);
+        this.modal.updateBounds(this.width, this.height);
+        this.addRenderableWidget(this.modal.getWidget());
+        if (this.modal.isInputMode()) this.setFocused(this.modal.getWidget());
     }
 
     private void collectExpandedPaths(FileNode node, Set<String> set) {
@@ -372,7 +360,7 @@ public class NekoWorkspaceScreen extends Screen {
         String replacement = replaceBox.getValue();
 
         Pattern pattern = getSearchPattern(query);
-        if (pattern == null) { showToast("§c✖ 搜索内容为空或正则错误"); return; }
+        if (pattern == null) { toast.show("§c✖ 搜索内容为空或正则错误"); return; }
 
         int affectedFiles = 0;
         int totalReplaced = 0;
@@ -410,22 +398,55 @@ public class NekoWorkspaceScreen extends Screen {
                         fileContentCache.put(path, newContent);
                         affectedFiles++;
                         if (tabbedEditor != null) tabbedEditor.openTab(path, newContent);
-                    } catch (Exception e) { showToast("§c✖ 替换文件失败: " + path); }
+                    } catch (Exception e) { toast.show("§c✖ 替换文件失败: " + path); }
                 }
             }
         }
         buildSearchTree();
         refreshFileList();
-        showToast("§a✔ 在 " + affectedFiles + " 个文件中替换了 " + totalReplaced + " 处内容");
+        toast.show("§a✔ 在 " + affectedFiles + " 个文件中替换了 " + totalReplaced + " 处内容");
     }
 
     private void sortTree(FileNode node) { node.children.sort((a, b) -> { if (a.isDir != b.isDir) return a.isDir ? -1 : 1; return a.name.compareToIgnoreCase(b.name); }); for (FileNode c : node.children) { if (c.isDir) sortTree(c); } }
-    private void createNewItem(String targetDir, String name, boolean isDir) { try { if (name == null || name.trim().isEmpty()) return; String fullPath = targetDir.isEmpty() ? name : targetDir + "/" + name; Path p = NekoJSPaths.ROOT.resolve(fullPath); if (isDir) { Files.createDirectories(p); } else { if (p.getParent() != null) Files.createDirectories(p.getParent()); if (!Files.exists(p)) Files.createFile(p); } scanLocalFiles(); if (!targetDir.isEmpty()) { expandNodeByPath(treeRoot, targetDir); } refreshFileList(); showToast("§a✔ 创建成功: " + name); } catch (Exception e) { showToast("§c✖ 创建失败: " + e.getMessage()); } }
+
+    private void createNewItem(String targetDir, String name, boolean isDir) {
+        try {
+            if (name == null || name.trim().isEmpty()) return;
+            String fullPath = targetDir.isEmpty() ? name : targetDir + "/" + name;
+            Path p = NekoJSPaths.ROOT.resolve(fullPath);
+            if (isDir) {
+                Files.createDirectories(p);
+            } else {
+                if (p.getParent() != null) Files.createDirectories(p.getParent());
+                if (!Files.exists(p)) Files.createFile(p);
+            }
+            scanLocalFiles();
+            if (!targetDir.isEmpty()) { expandNodeByPath(treeRoot, targetDir); }
+            refreshFileList();
+            toast.show("§a✔ 创建成功: " + name);
+        } catch (Exception e) { toast.show("§c✖ 创建失败: " + e.getMessage()); }
+    }
+
     private void expandNodeByPath(FileNode root, String path) { if (path == null || path.isEmpty()) return; String[] parts = path.split("/"); FileNode current = root; for (String part : parts) { for (FileNode child : current.children) { if (child.name.equals(part)) { child.isExpanded = true; current = child; break; } } } }
-    private void deleteItem(String path) { try { Path target = NekoJSPaths.ROOT.resolve(path); if (Files.exists(target)) { if (Files.isDirectory(target)) { try (Stream<Path> walk = Files.walk(target)) { walk.sorted(Comparator.reverseOrder()).map(Path::toFile).forEach(File::delete); } } else { Files.delete(target); } } if (selectedFilePath != null && selectedFilePath.startsWith(path)) { selectedFilePath = null; } scanLocalFiles(); refreshFileList(); showToast("§a✔ 已删除 " + path); } catch (Exception e) { showToast("§c✖ 删除失败: " + e.getMessage()); } }
+
+    private void deleteItem(String path) {
+        try {
+            Path target = NekoJSPaths.ROOT.resolve(path);
+            if (Files.exists(target)) {
+                if (Files.isDirectory(target)) {
+                    try (Stream<Path> walk = Files.walk(target)) { walk.sorted(Comparator.reverseOrder()).map(Path::toFile).forEach(File::delete); }
+                } else {
+                    Files.delete(target);
+                }
+            }
+            if (selectedFilePath != null && selectedFilePath.startsWith(path)) { selectedFilePath = null; }
+            scanLocalFiles();
+            refreshFileList();
+            toast.show("§a✔ 已删除 " + path);
+        } catch (Exception e) { toast.show("§c✖ 删除失败: " + e.getMessage()); }
+    }
+
     private String getParentDir(String path) { int idx = path.lastIndexOf('/'); return (idx == -1) ? "" : path.substring(0, idx); }
-    private void openModal(String title, Consumer<String> callback) { this.modalTitle = title; this.modalCallback = callback; if (this.modalInput != null) { this.modalInput.setValue(""); this.modalInput.visible = true; this.modalInput.active = true; this.setFocused(this.modalInput); } this.isModalOpen = true; this.activeContextMenu = null; }
-    private void closeModal() { this.isModalOpen = false; if (this.modalInput != null) { this.modalInput.visible = false; this.modalInput.active = false; } this.setFocused(null); }
 
     private void openFileInEditor(String path) {
         openFileInEditor(path, -1, -1);
@@ -443,13 +464,10 @@ public class NekoWorkspaceScreen extends Screen {
                     tabbedEditor.getActiveTab().editor.setHighlightAndScroll(selectionStart, selectionEnd);
                 }
             }
-
-        } catch (Exception e) { showToast("§c✖ 无法读取文件: " + e.getMessage()); }
+        } catch (Exception e) { toast.show("§c✖ 无法读取文件: " + e.getMessage()); }
     }
 
-    private void doSaveTab(NekoTabbedEditor.Tab tab) { if (tab == null || tab.editor == null) return; try { Path path = NekoJSPaths.ROOT.resolve(tab.path); Files.writeString(path, tab.editor.getValue()); showToast("§a✔ 已保存 " + tab.path); tab.editor.markSaved(); } catch (Exception e) { showToast("§c✖ 保存失败: " + e.getMessage()); } }
-    public void showToast(String msg) { this.toastMessage = msg; this.toastTime = System.currentTimeMillis() + 2000; }
-    public void onSyncFeedback(boolean success, String message) { String prefix = success ? "§a✔ " : "§c✖ "; this.showToast(prefix + message); if (success && tabbedEditor != null && tabbedEditor.getActiveTab() != null) { tabbedEditor.getActiveTab().editor.markSaved(); } }
+    public void onSyncFeedback(boolean success, String message) { String prefix = success ? "§a✔ " : "§c✖ "; this.toast.show(prefix + message); if (success && tabbedEditor != null && tabbedEditor.getActiveTab() != null) { tabbedEditor.getActiveTab().editor.markSaved(); } }
 
     @Override
     public void extractBackground(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
@@ -462,7 +480,7 @@ public class NekoWorkspaceScreen extends Screen {
         graphics.text(this.font, "§cNEKO§fJS §8Workspace", 10, 6, -1);
         int closeX = this.width - 20;
         graphics.text(this.font, (mouseX >= closeX && mouseX <= closeX + 10 && mouseY >= 4 && mouseY <= 16) ? "§c✖" : "§7✖", closeX, 6, -1);
-        renderTopMenuBar(graphics, mouseX, mouseY);
+
         graphics.fill(0, topY, actBarW, this.height, 0xFF333333);
 
         int iconCenterYOffset = (actBarW - this.font.lineHeight) / 2;
@@ -498,8 +516,8 @@ public class NekoWorkspaceScreen extends Screen {
 
         graphics.fill(leftW, topY, rightX, this.height, 0xFF1E1E1E);
         if (tabbedEditor != null && !tabbedEditor.isEmpty()) { tabbedEditor.renderUnderlay(graphics, mouseX, mouseY); } else { graphics.fill(rightX, topY, this.width, this.height, 0xFF1E1E1E); graphics.centeredText(this.font, "§7从左侧选择文件以开始编辑 (双击打开)", rightX + (this.width - rightX) / 2, this.height / 2, -1); }
-        boolean blockEditorHover = isModalOpen || (activeContextMenu != null) || (tabbedEditor != null && tabbedEditor.isHoveringDropdown(mouseX, mouseY));
 
+        boolean blockEditorHover = modal.isOpen() || (activeContextMenu != null) || menuBar.isMenuOpen() || (tabbedEditor != null && tabbedEditor.isHoveringDropdown(mouseX, mouseY));
         super.extractRenderState(graphics, blockEditorHover ? -999 : mouseX, blockEditorHover ? -999 : mouseY, partialTick);
 
         String activeTooltip = null;
@@ -520,15 +538,12 @@ public class NekoWorkspaceScreen extends Screen {
             activeTooltip = drawToggleIcon(graphics, "ALL", iconStartX + 20, ry, false, mouseX, mouseY, activeTooltip, "全部替换");
         }
 
-        if (System.currentTimeMillis() < toastTime) { float yAnim = Mth.clamp((2000f - (toastTime - System.currentTimeMillis())) / 150f, 0, 1); int tw = this.font.width(toastMessage) + 20; int ty = this.height - 30 - (int)(15 * yAnim); graphics.fill(this.width/2-tw/2, ty, this.width/2+tw/2, ty+16, 0xCC000000); graphics.outline(this.width/2-tw/2, ty, tw, 16, 0xFF44FF44); graphics.centeredText(this.font, toastMessage, this.width / 2, ty + 4, -1); }
-        if (this.activeContextMenu != null) this.activeContextMenu.render(graphics, mouseX, mouseY);
+        int titleW = this.font.width("NEKOJS Workspace") + 30;
+        this.menuBar.render(graphics, this.font, mouseX, mouseY, titleW, 3);
 
-        if (this.isModalOpen) {
-            int mw = 240; int mh = 80; int mx_ = this.width / 2 - mw / 2; int my_ = this.height / 2 - mh / 2;
-            graphics.fill(0, 0, this.width, this.height, 0x88000000); graphics.fill(mx_, my_, mx_ + mw, my_ + mh, 0xFF1E1E1E); graphics.outline(mx_, my_, mw, mh, 0xFF454545); graphics.centeredText(this.font, modalTitle, this.width / 2, my_ + 8, 0xFFFFFFFF);
-            if (this.modalInput != null) this.modalInput.extractRenderState(graphics, mouseX, mouseY, partialTick);
-            int btnY = my_ + 55; boolean hovC = mouseX >= mx_ + mw - 110 && mouseX <= mx_ + mw - 60 && mouseY >= btnY && mouseY <= btnY + 16; graphics.fill(mx_ + mw - 110, btnY, mx_ + mw - 60, btnY + 16, hovC ? 0xFF007ACC : 0xFF094771); graphics.centeredText(this.font, "确定", mx_ + mw - 85, btnY + 4, 0xFFFFFFFF); boolean hovX = mouseX >= mx_ + mw - 55 && mouseX <= mx_ + mw - 10 && mouseY >= btnY && mouseY <= btnY + 16; graphics.fill(mx_ + mw - 55, btnY, mx_ + mw - 10, btnY + 16, hovX ? 0xFF555555 : 0xFF333333); graphics.centeredText(this.font, "取消", mx_ + mw - 32, btnY + 4, 0xFFFFFFFF);
-        }
+        this.toast.render(graphics, this.font, this.width, this.height);
+        if (this.activeContextMenu != null) this.activeContextMenu.render(graphics, mouseX, mouseY);
+        this.modal.render(graphics, mouseX, mouseY, partialTick, this.width, this.height);
 
         if (activeTooltip != null) {
             int tw = this.font.width(activeTooltip) + 8;
@@ -545,13 +560,25 @@ public class NekoWorkspaceScreen extends Screen {
         return isHovered ? tooltipStr : currentTooltip;
     }
 
-    private void renderTopMenuBar(GuiGraphicsExtractor g, int mx, int my) { int curX = this.width - 40; if (tabbedEditor != null && !tabbedEditor.isEmpty() && tabbedEditor.getActiveTab() != null) { boolean isDirty = tabbedEditor.getActiveTab().editor.isDirty(); curX = renderTopButton(g, isDirty ? "§e[保存当前*]" : "§a[保存当前]", curX, mx, my, () -> doSaveTab(tabbedEditor.getActiveTab())); curX = renderTopButton(g, "§e[↑ 推送当前]", curX, mx, my, () -> { ClientPacketDistributor.sendToServer(new SaveScriptPacket(tabbedEditor.getActiveTab().path, tabbedEditor.getActiveTab().editor.getValue())); showToast("§e正在推送当前文件..."); }); } curX -= 10; curX = renderTopButton(g, "§b[↓↓ 拉取所有]", curX, mx, my, () -> { ClientPacketDistributor.sendToServer(new FetchAllScriptsRequestPacket()); showToast("§b请求覆盖拉取服务端所有代码..."); }); curX = renderTopButton(g, "§e[↑↑ 推送所有]", curX, mx, my, () -> { Map<String, String> localFiles = NekoJSNetwork.collectAllValidScripts(NekoJSPaths.ROOT); ClientPacketDistributor.sendToServer(new UploadAllScriptsPacket(localFiles)); showToast("§e正在打包推送所有本地代码..."); }); curX -= 10; curX = renderTopButton(g, "§7[打开本地目录]", curX, mx, my, () -> Util.getPlatform().openFile(NekoJSPaths.ROOT.toFile())); curX = renderTopButton(g, "§7[刷新列表]", curX, mx, my, () -> { scanLocalFiles(); refreshFileList(); showToast("§a本地文件列表已刷新"); }); }
-    private int renderTopButton(GuiGraphicsExtractor g, String text, int x, int mx, int my, Runnable action) { int w = this.font.width(text); int targetX = x - w - 5; boolean hov = mx >= targetX && mx <= targetX + w && my >= 4 && my <= 16; g.text(this.font, text, targetX, 6, -1); if (hov) g.fill(targetX, 6 + this.font.lineHeight, targetX + w, 6 + this.font.lineHeight + 1, 0xFFFFFFFF); return targetX; }
-
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
-        if (isModalOpen) { int mw = 240; int mh = 80; int mx_ = this.width / 2 - mw / 2; int my_ = this.height / 2 - mh / 2; int btnY = my_ + 55; if (event.button() == 0 && event.y() >= btnY && event.y() <= btnY + 16) { if (event.x() >= mx_ + mw - 110 && event.x() <= mx_ + mw - 60) { if (modalCallback != null) modalCallback.accept(modalInput.getValue()); closeModal(); return true; } if (event.x() >= mx_ + mw - 55 && event.x() <= mx_ + mw - 10) { closeModal(); return true; } } if (modalInput != null && modalInput.mouseClicked(event, false)) return true; return true; }
-        if (activeContextMenu != null) { if (activeContextMenu.mouseClicked(event.x(), event.y(), event.button())) return true; activeContextMenu = null; return true; }
+        if (modal.isOpen()) {
+            if (modal.mouseClicked(event, this.width, this.height)) return true;
+            return true;
+        }
+
+        if (activeContextMenu != null) {
+            if (activeContextMenu.mouseClicked(event.x(), event.y(), event.button())) {
+                activeContextMenu = null; return true;
+            }
+            activeContextMenu = null; return true;
+        }
+
+        int titleW = this.font.width("NEKOJS Workspace") + 30;
+        if (this.menuBar.mouseClicked(event.x(), event.y(), event.button(), this.font, this.width, this.height, titleW, 3)) {
+            return true;
+        }
+
         if (event.y() >= 4 && event.y() <= 16) { int closeX = this.width - 20; if (event.x() >= closeX && event.x() <= closeX + 10) { this.onClose(); return true; } }
 
         if (event.x() >= 0 && event.x() <= actBarW && event.y() >= topY) {
@@ -575,17 +602,25 @@ public class NekoWorkspaceScreen extends Screen {
             }
         }
 
-        if (event.y() >= 0 && event.y() <= topY) { int curX = this.width - 40; if (tabbedEditor != null && !tabbedEditor.isEmpty() && tabbedEditor.getActiveTab() != null) { boolean isDirty = tabbedEditor.getActiveTab().editor.isDirty(); int cw2 = this.font.width(isDirty ? "§e[保存当前*]" : "§a[保存当前]"); curX -= (cw2 + 5); if (event.x() >= curX && event.x() <= curX + cw2) { doSaveTab(tabbedEditor.getActiveTab()); return true; } int cw3 = this.font.width("§e[↑ 推送当前]"); curX -= (cw3 + 5); if (event.x() >= curX && event.x() <= curX + cw3) { ClientPacketDistributor.sendToServer(new SaveScriptPacket(tabbedEditor.getActiveTab().path, tabbedEditor.getActiveTab().editor.getValue())); showToast("§e正在推送当前文件..."); return true; } } curX -= 10; int cw4 = this.font.width("§b[↓↓ 拉取所有]"); curX -= (cw4 + 5); if (event.x() >= curX && event.x() <= curX + cw4) { ClientPacketDistributor.sendToServer(new FetchAllScriptsRequestPacket()); showToast("§b请求覆盖拉取服务端所有代码..."); return true; } int cw5 = this.font.width("§e[↑↑ 推送所有]"); curX -= (cw5 + 5); if (event.x() >= curX && event.x() <= curX + cw5) { Map<String, String> localFiles = NekoJSNetwork.collectAllValidScripts(NekoJSPaths.ROOT); ClientPacketDistributor.sendToServer(new UploadAllScriptsPacket(localFiles)); showToast("§e正在打包推送所有本地代码..."); return true; } curX -= 10; int cw6 = this.font.width("§7[打开本地目录]"); curX -= (cw6 + 5); if (event.x() >= curX && event.x() <= curX + cw6) { Util.getPlatform().openFile(NekoJSPaths.ROOT.toFile()); return true; } int cw7 = this.font.width("§7[刷新列表]"); curX -= (cw7 + 5); if (event.x() >= curX && event.x() <= curX + cw7) { scanLocalFiles(); refreshFileList(); showToast("§a本地文件列表已刷新"); return true; } }
-
         boolean handled = super.mouseClicked(event, doubleClick);
-        if (!handled && event.button() == 1 && isSidebarOpen && activeActivity == 0) { if (event.x() > actBarW && event.x() < leftW && event.y() > topY) { List<MenuItem> items = List.of( new MenuItem("📄 新建文件", () -> openModal("新建文件 (根目录)", name -> createNewItem("", name, false))), new MenuItem("📁 新建文件夹", () -> openModal("新建文件夹 (根目录)", name -> createNewItem("", name, true))), new MenuItem("🔄 刷新列表", () -> { scanLocalFiles(); refreshFileList(); showToast("§a刷新成功"); }) ); this.activeContextMenu = new ContextMenu((int)event.x(), (int)event.y(), items); return true; } }
+        if (!handled && event.button() == 1 && isSidebarOpen && activeActivity == 0) {
+            if (event.x() > actBarW && event.x() < leftW && event.y() > topY) {
+                List<NekoContextMenu.MenuItem> items = List.of(
+                        new NekoContextMenu.MenuItem("📄 新建文件", () -> modal.openInput("新建文件 (根目录)", name -> createNewItem("", name, false))),
+                        new NekoContextMenu.MenuItem("📁 新建文件夹", () -> modal.openInput("新建文件夹 (根目录)", name -> createNewItem("", name, true))),
+                        new NekoContextMenu.MenuItem("🔄 刷新列表", () -> { scanLocalFiles(); refreshFileList(); toast.show("§a刷新成功"); })
+                );
+                this.activeContextMenu = new NekoContextMenu(this.font, (int)event.x(), (int)event.y(), this.width, this.height, items);
+                return true;
+            }
+        }
         if (tabbedEditor != null && tabbedEditor.mouseClicked(event.x(), event.y(), event.button())) return true;
         return handled;
     }
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
-        if (isModalOpen || activeContextMenu != null) return true;
+        if (modal.isOpen() || activeContextMenu != null || menuBar.isMenuOpen()) return true;
         if (tabbedEditor != null && tabbedEditor.mouseScrolled(mouseX, mouseY, scrollX, scrollY)) return true;
 
         if (isSidebarOpen && mouseX >= actBarW && mouseX <= leftW && mouseY >= topY) {
@@ -605,16 +640,20 @@ public class NekoWorkspaceScreen extends Screen {
 
     @Override
     public boolean keyPressed(KeyEvent event) {
-        if (isModalOpen) { if (event.key() == GLFW.GLFW_KEY_ESCAPE) { closeModal(); return true; } if (event.key() == GLFW.GLFW_KEY_ENTER || event.key() == GLFW.GLFW_KEY_KP_ENTER) { if (modalCallback != null) modalCallback.accept(modalInput.getValue()); closeModal(); return true; } return super.keyPressed(event); }
+        if (modal.isOpen()) {
+            if (modal.keyPressed(event)) return true;
+            return super.keyPressed(event);
+        }
         if (this.activeContextMenu != null && event.isEscape()) { this.activeContextMenu = null; return true; }
+        if (this.menuBar.keyPressed(event)) return true;
         if (tabbedEditor != null && tabbedEditor.keyPressed(event)) return true;
         return super.keyPressed(event);
     }
 
     @Override
     public boolean charTyped(CharacterEvent event) {
-        if (isModalOpen) return super.charTyped(event);
-        if (this.activeContextMenu != null) return false;
+        if (modal.isOpen()) return super.charTyped(event);
+        if (this.activeContextMenu != null || this.menuBar.isMenuOpen()) return false;
         if (tabbedEditor != null && tabbedEditor.charTyped((char) event.codepoint())) return true;
         return super.charTyped(event);
     }
@@ -701,9 +740,21 @@ public class NekoWorkspaceScreen extends Screen {
                     g.text(NekoWorkspaceScreen.this.font, post, xOffset, yOffset, 0xFFCCCCCC);
                 }
             } else if (node.isDir) {
+                int btnX = baseRenderX + indent - 2;
+                int btnY = this.getY() + 1;
+                int btnW = 10;
+                int btnH = 10;
+
+                boolean hovBtn = mx >= btnX && mx <= btnX + btnW && my >= btnY && my <= btnY + btnH;
+                if (hovBtn) {
+                    g.fill(btnX, btnY, btnX + btnW, btnY + btnH, 0x33FFFFFF);
+                    g.outline(btnX, btnY, btnW, btnH, 0x55FFFFFF);
+                }
+
                 String prefix = node.isExpanded ? "v" : ">";
-                g.text(NekoWorkspaceScreen.this.font, prefix, baseRenderX + indent, this.getY() + 3, 0xFF888888);
-                g.text(NekoWorkspaceScreen.this.font, node.name, baseRenderX + indent + 10, this.getY() + 3, color);
+                g.text(NekoWorkspaceScreen.this.font, prefix, btnX + 2, btnY + 1, hovBtn ? 0xFFFFFFFF : 0xFF888888);
+
+                g.text(NekoWorkspaceScreen.this.font, node.name, baseRenderX + indent + 12, this.getY() + 3, color);
             } else {
                 g.text(NekoWorkspaceScreen.this.font, node.name, baseRenderX + indent, this.getY() + 3, color);
             }
@@ -714,10 +765,8 @@ public class NekoWorkspaceScreen extends Screen {
             if (event.button() == 0) {
                 if (node.isDir) {
                     int indent = (node.depth * 10 + 4);
-                    if (event.x() < this.getX() - (int) NekoWorkspaceScreen.this.listScrollX + indent + 12) {
+                    if (event.x() < this.getX() - (int) NekoWorkspaceScreen.this.listScrollX + indent + 10) {
                         node.isExpanded = !node.isExpanded;
-                        NekoWorkspaceScreen.this.selectedFilePath = node.path;
-                        NekoWorkspaceScreen.this.selectedMatchStart = -1;
                     } else {
                         node.isExpanded = !node.isExpanded;
                         NekoWorkspaceScreen.this.selectedFilePath = node.path;
@@ -741,19 +790,16 @@ public class NekoWorkspaceScreen extends Screen {
             } else if (event.button() == 1) {
                 String targetDir = node.isDir ? node.path : getParentDir(node.path);
                 String displayDir = targetDir.isEmpty() ? "根目录" : targetDir;
-                List<MenuItem> items = List.of(
-                        new MenuItem("📄 新建文件", () -> NekoWorkspaceScreen.this.openModal("新建文件 (" + displayDir + ")", name -> NekoWorkspaceScreen.this.createNewItem(targetDir, name, false))),
-                        new MenuItem("📁 新建文件夹", () -> NekoWorkspaceScreen.this.openModal("新建文件夹 (" + displayDir + ")", name -> NekoWorkspaceScreen.this.createNewItem(targetDir, name, true))),
-                        new MenuItem("🗑 删除 " + node.name, () -> NekoWorkspaceScreen.this.deleteItem(node.path))
+                List<NekoContextMenu.MenuItem> items = List.of(
+                        new NekoContextMenu.MenuItem("📄 新建文件", () -> modal.openInput("新建文件 (" + displayDir + ")", name -> NekoWorkspaceScreen.this.createNewItem(targetDir, name, false))),
+                        new NekoContextMenu.MenuItem("📁 新建文件夹", () -> modal.openInput("新建文件夹 (" + displayDir + ")", name -> NekoWorkspaceScreen.this.createNewItem(targetDir, name, true))),
+                        new NekoContextMenu.MenuItem("🗑 删除 " + node.name, () -> modal.openConfirm("确定要删除 " + node.name + " 吗？", () -> NekoWorkspaceScreen.this.deleteItem(node.path)))
                 );
-                NekoWorkspaceScreen.this.activeContextMenu = new ContextMenu((int)event.x(), (int)event.y(), items);
+                NekoWorkspaceScreen.this.activeContextMenu = new NekoContextMenu(NekoWorkspaceScreen.this.font, (int)event.x(), (int)event.y(), NekoWorkspaceScreen.this.width, NekoWorkspaceScreen.this.height, items);
                 return true;
             }
             return false;
         }
         @Override public Component getNarration() { return Component.literal(this.node.path); }
     }
-
-    private class ContextMenu { int x, y, width, height; List<MenuItem> items; public ContextMenu(int sx, int sy, List<MenuItem> items) { this.items = items; this.height = items.size() * 18 + 6; int maxW = 120; for(MenuItem item : items) maxW = Math.max(maxW, NekoWorkspaceScreen.this.font.width(item.label) + 20); this.width = maxW; this.x = Math.min(sx, NekoWorkspaceScreen.this.width - width - 5); this.y = Math.min(sy, NekoWorkspaceScreen.this.height - height - 5); } public void render(GuiGraphicsExtractor g, int mx, int my) { g.fill(x, y, x+width, y+height, 0xFF18181B); g.outline(x, y, width, height, 0xFF3F3F46); for (int i = 0; i < items.size(); i++) { int iy = y + 3 + i * 18; boolean h = mx >= x && mx <= x+width && my >= iy && my < iy+18; if (h) g.fill(x+2, iy, x+width-2, iy+18, 0xFF27272A); g.text(NekoWorkspaceScreen.this.font, items.get(i).label, x+8, iy+5, h ? -1 : 0xFFA1A1AA); } } public boolean mouseClicked(double mx, double my, int b) { if (b == 0 && mx >= x && mx <= x+width && my >= y && my <= y+height) { int index = ((int)my - y - 3) / 18; if (index >= 0 && index < items.size()) items.get(index).action.run(); return true; } return false; } }
-    private record MenuItem(String label, Runnable action) {}
 }
