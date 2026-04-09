@@ -16,6 +16,9 @@ public enum ScriptType {
     SERVER("server", "NekoJS Server", NekoJSPaths.SERVER_SCRIPTS),
     CLIENT("client", "NekoJS Client", NekoJSPaths.CLIENT_SCRIPTS);
 
+    private static final ScriptTypedValue<Logger> LOGGERS =
+        ScriptTypedValue.of(type -> NekoJSLoggers.createLogger(type.name));
+
     public final String name;
     public final String cname;
     public final Path path;
@@ -27,7 +30,7 @@ public enum ScriptType {
     }
 
     public Logger logger() {
-        return NekoJSLoggers.get(name);
+        return LOGGERS.at(this);
     }
 
     public Path getLogFile() {
