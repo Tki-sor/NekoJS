@@ -42,7 +42,7 @@ public final class NekoJSPaths {
     /* ================= Initialization ================= */
     public static void initFoldersOnly() {
         ensureDir(ROOT);
-        ensureDir(COMMON_SCRIPTS);
+//        ensureDir(COMMON_SCRIPTS);
         ensureDir(STARTUP_SCRIPTS);
         ensureDir(SERVER_SCRIPTS);
         ensureDir(CLIENT_SCRIPTS);
@@ -118,7 +118,7 @@ public final class NekoJSPaths {
         createConfigForEnv("server", SERVER_SCRIPTS);
         createConfigForEnv("client", CLIENT_SCRIPTS);
         createConfigForEnv("startup", STARTUP_SCRIPTS);
-        createConfigForEnv("common", COMMON_SCRIPTS);
+//        createConfigForEnv("common", COMMON_SCRIPTS);
     }
 
     private static void createConfigForEnv(String envName, Path scriptDir) {

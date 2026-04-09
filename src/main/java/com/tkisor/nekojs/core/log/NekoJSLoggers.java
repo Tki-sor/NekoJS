@@ -4,8 +4,10 @@ import com.tkisor.nekojs.NekoJS;
 import com.tkisor.nekojs.core.fs.NekoJSPaths;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.core.LoggerContext;
+import org.apache.logging.log4j.core.config.AppenderRef;
 import org.apache.logging.log4j.core.config.Configuration;
 import org.apache.logging.log4j.core.config.LoggerConfig;
+import org.apache.logging.log4j.core.appender.AsyncAppender;
 import org.apache.logging.log4j.core.appender.FileAppender;
 import org.apache.logging.log4j.core.layout.PatternLayout;
 import org.slf4j.Logger;
@@ -30,10 +32,11 @@ public final class NekoJSLoggers {
         LoggerContext ctx = (LoggerContext) LogManager.getContext(false);
         Configuration cfg = ctx.getConfiguration();
 
-        String appenderName = "NekoJS-" + name;
+        String fileAppenderName = "NekoJS-File-" + name;   // 底层干苦力的写入器
+        String asyncAppenderName = "NekoJS-Async-" + name; // 前台接客的异步队列
         String loggerName = "nekojs." + name;
 
-        if (cfg.getAppenders().containsKey(appenderName)) {
+        if (cfg.getAppenders().containsKey(asyncAppenderName)) {
             return LoggerFactory.getLogger(loggerName);
         }
 
@@ -61,19 +64,30 @@ public final class NekoJSLoggers {
                 .withConfiguration(cfg)
                 .build();
 
-        FileAppender appender = FileAppender.newBuilder()
+        FileAppender fileAppender = FileAppender.newBuilder()
                 .withFileName(file.toString())
-                .setName(appenderName)
+                .setName(fileAppenderName)
                 .setLayout(layout)
                 .withAppend(true)
                 .setConfiguration(cfg)
                 .build();
 
-        appender.start();
-        cfg.addAppender(appender);
+        fileAppender.start();
+        cfg.addAppender(fileAppender);
+
+        AppenderRef appenderRef = AppenderRef.createAppenderRef(fileAppenderName, null, null);
+        AsyncAppender asyncAppender = AsyncAppender.newBuilder()
+                .setName(asyncAppenderName)
+                .setConfiguration(cfg)
+                .setAppenderRefs(new AppenderRef[]{appenderRef})
+                .setBufferSize(2048) // 内存队列大小，防止瞬间高并发日志冲爆内存
+                .build();
+
+        asyncAppender.start();
+        cfg.addAppender(asyncAppender);
 
         LoggerConfig loggerConfig = new LoggerConfig(loggerName, INFO, true);
-        loggerConfig.addAppender(appender, null, null);
+        loggerConfig.addAppender(asyncAppender, null, null);
 
         cfg.addLogger(loggerName, loggerConfig);
         ctx.updateLoggers();

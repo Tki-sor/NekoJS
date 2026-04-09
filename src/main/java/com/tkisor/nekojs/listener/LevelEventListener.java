@@ -11,7 +11,11 @@ import net.neoforged.neoforge.event.level.ExplosionEvent;
 public class LevelEventListener {
     @SubscribeEvent
     public static void onExplosionStart(ExplosionEvent.Start event) {
-        ExplosionStartEventJS eventJS = new ExplosionStartEventJS(event);
-        LevelEvents.EXPLOSION_START.post(eventJS);
+        LevelEvents.EXPLOSION_START.post(event);
+    }
+
+    @SubscribeEvent
+    public static void onExplosionDetonate(ExplosionEvent.Detonate event) {
+        LevelEvents.EXPLOSION_DETONATE.post(event);
     }
 }

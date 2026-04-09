@@ -3,20 +3,15 @@ package com.tkisor.nekojs.command;
 import com.mojang.brigadier.CommandDispatcher;
 import com.tkisor.nekojs.NekoJS;
 import com.tkisor.nekojs.core.error.NekoErrorTracker;
-import com.tkisor.nekojs.core.error.ScriptError;
 import com.tkisor.nekojs.network.OpenWorkspacePacket;
 import com.tkisor.nekojs.network.ShowErrorListPacket;
-import com.tkisor.nekojs.network.ShowErrorScreenPacket;
 import com.tkisor.nekojs.network.dto.ErrorSummaryDTO;
 import com.tkisor.nekojs.script.ScriptType;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
-import net.minecraft.commands.arguments.IdentifierArgument;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.HoverEvent;
-import net.minecraft.network.chat.MutableComponent;
-import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import net.neoforged.neoforge.network.PacketDistributor;
@@ -42,15 +37,15 @@ public final class NekoJSCommands {
                                     try {
                                         NekoErrorTracker.clearAll();
 
-                                        NekoJS.SCRIPT_MANAGER.reloadScripts(ScriptType.COMMON);
+//                                        NekoJS.SCRIPT_MANAGER.reloadScripts(ScriptType.COMMON);
                                         NekoJS.SCRIPT_MANAGER.reloadScripts(ScriptType.SERVER);
 
                                         if (NekoErrorTracker.hasErrors()) {
-                                            source.sendFailure(Component.literal("§c[NekoJS] ✖ 重载完毕，但存在 " + NekoErrorTracker.getAllErrors().size() + " 个错误："));
+                                            source.sendFailure(NekoErrorTracker.getErrorComponent());
                                             // 复用输出逻辑
-                                            printErrorsToSource(source);
+//                                            printErrorsToSource(source);
                                         } else {
-                                            source.sendSuccess(() -> Component.literal("§a[NekoJS] ✔ 脚本完美重载！"), true);
+                                            source.sendSuccess(NekoErrorTracker::getSuccessComponent, true);
                                         }
                                     } catch (Exception e) {
                                         source.sendFailure(Component.literal("§c[NekoJS] ✖ 重载发生致命崩溃！请查看后台日志。"));
@@ -64,9 +59,9 @@ public final class NekoJSCommands {
                                     CommandSourceStack source = context.getSource();
 
                                     if (NekoErrorTracker.hasErrors()) {
-                                        source.sendFailure(Component.literal("§c[NekoJS] ⚠ 当前环境存在 " + NekoErrorTracker.getAllErrors().size() + " 个运行错误："));
+                                        source.sendFailure(NekoErrorTracker.getErrorComponent());
                                         // 复用输出逻辑
-                                        printErrorsToSource(source);
+//                                        printErrorsToSource(source);
                                     } else {
                                         source.sendSuccess(() -> Component.literal("§a[NekoJS] ✔ 当前运行环境非常健康，没有任何脚本错误！"), false);
                                     }

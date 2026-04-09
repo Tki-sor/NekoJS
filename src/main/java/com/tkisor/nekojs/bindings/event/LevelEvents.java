@@ -9,9 +9,13 @@ import net.neoforged.neoforge.event.level.ExplosionEvent;
 
 public interface LevelEvents {
     EventGroup GROUP = EventGroup.of("LevelEvents");
-    EventBusJS<ExplosionStartEventJS, Void> EXPLOSION_START =
-            GROUP.server("explosionStart", ExplosionStartEventJS.class);
+
+    EventBusJS<ExplosionEvent.Start, Void> EXPLOSION_START =
+            GROUP.server("explosionStart", ExplosionEvent.Start.class);
+    EventBusJS<ExplosionEvent.Detonate, Void> EXPLOSION_DETONATE =
+            GROUP.server("explosionDetonate", ExplosionEvent.Detonate.class);
 
     EventBusForgeBridge FORGE_BRIDGE = EventBusForgeBridge.create(NeoForge.EVENT_BUS)
-            .bindTransformed(EXPLOSION_START, ExplosionStartEventJS::new, ExplosionEvent.Start.class);
+            .bind(EXPLOSION_START)
+            .bind(EXPLOSION_DETONATE);
 }

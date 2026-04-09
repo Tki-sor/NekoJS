@@ -13,23 +13,23 @@ public class BlockEventListener {
     @SubscribeEvent
     public static void onBlockBreak(BlockEvent.BreakEvent event) {
         BlockState blockState = event.getState();
-        BlockEvents.BROKEN.post(event, blockState.getBlock().neko$getId());
+        BlockEvents.BROKEN.post(event, blockState.getBlock());
     }
 
     @SubscribeEvent
     public static void onBlockRightClick(PlayerInteractEvent.RightClickBlock event) {
         BlockState blockState = event.getLevel().getBlockState(event.getPos());
-        BlockEvents.RIGHT_CLICKED.post(event, blockState.getBlock().neko$getId());
+        BlockEvents.RIGHT_CLICKED.post(event, blockState.getBlock());
     }
 
     @SubscribeEvent
     public static void onBlockLeftClicked(PlayerInteractEvent.LeftClickBlock event) {
         BlockState blockState = event.getLevel().getBlockState(event.getPos());
-        BlockEvents.LEFT_CLICKED.post(event, blockState.getBlock().neko$getId());
+        BlockEvents.LEFT_CLICKED.post(event, blockState.getBlock());
     }
 
     @SubscribeEvent
     public static void onBlockPlace(BlockEvent.EntityPlaceEvent event) {
-        BlockEvents.PLACED.post(event, event.getPlacedBlock().getBlock().neko$getId());
+        BlockEvents.PLACED.post(event, event.getPlacedBlock().getBlock());
     }
 }

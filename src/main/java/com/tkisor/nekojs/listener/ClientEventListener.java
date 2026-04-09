@@ -16,6 +16,6 @@ public class ClientEventListener {
             return;
         }
 
-        ItemEvents.TOOLTIP.post(event);
+        ItemEvents.TOOLTIP.post(event, event.getItemStack());
     }
 }

@@ -7,6 +7,7 @@ import com.tkisor.nekojs.core.fs.NekoJSPaths;
 import com.tkisor.nekojs.core.log.LoggerStream;
 import com.tkisor.nekojs.script.ScriptType;
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.IOAccess;
@@ -17,50 +18,36 @@ import java.util.Set;
 
 /**
  * 专门负责构建安全 GraalVM 沙盒的工厂类
+ * 共享引擎以降低内存占用
  */
 public final class NekoSandboxBuilder {
+    private static final Engine SHARED_ENGINE = Engine.newBuilder("js")
+            .allowExperimentalOptions(true)
+            .option("engine.WarnInterpreterOnly", "false")
+            .build();
+
+    private static final HostAccess SHARED_HOST_ACCESS = createSharedHostAccess();
+
+    private static final IOAccess SHARED_IO_ACCESS = IOAccess.newBuilder()
+            .fileSystem(new NekoJSFileSystem(NekoJSPaths.ROOT))
+            .build();
+
     private static final Set<String> CLASS_BLACKLIST = Set.of(
-            "java.lang.Runtime",
-            "java.lang.Process",
-            "java.lang.ProcessBuilder",
-            "java.lang.Thread",
-            "java.lang.ThreadGroup",
-            "java.lang.ClassLoader",
-            "java.lang.System",
-            "java.lang.reflect",
-            "java.lang.invoke.MethodHandles",
-
-            "java.io",
-            "java.nio",
-            "java.net",
-            "java.util.jar",
-            "java.util.zip",
-
-            "sun",
-            "com.sun",
-            "org.objectweb.asm",
-            "org.spongepowered.asm",
-
-            "io.netty",
-            "org.openjdk.nashorn",
-            "jdk.nashorn",
-            "org.lwjgl.system",
-            "javax.script",
-            "org.graalvm.polyglot",
-
-            "net.neoforged.fml",
-            "net.neoforged.accesstransformer",
-            "net.neoforged.coremod",
-
-            "cpw.mods.modlauncher",
-            "cpw.mods.gross"
+            "java.lang.Runtime", "java.lang.Process", "java.lang.ProcessBuilder",
+            "java.lang.Thread", "java.lang.ThreadGroup", "java.lang.ClassLoader",
+            "java.lang.System", "java.lang.reflect", "java.lang.invoke.MethodHandles",
+            "java.io", "java.nio", "java.net", "java.util.jar", "java.util.zip",
+            "sun", "com.sun", "org.objectweb.asm", "org.spongepowered.asm",
+            "io.netty", "org.openjdk.nashorn", "jdk.nashorn", "org.lwjgl.system",
+            "javax.script", "org.graalvm.polyglot",
+            "net.neoforged.fml", "net.neoforged.accesstransformer", "net.neoforged.coremod",
+            "cpw.mods.modlauncher", "cpw.mods.gross"
     );
 
     private static final String CONSOLE_PATCH_JS = """
             (function() {
                 const originalWarn = console.warn;
                 console.warn = function(...args) {
-                    // 如果第一个参数是字符串（可能是格式化文本），直接把暗号拼在前面，防止破坏格式化
                     if (args.length > 0 && typeof args[0] === 'string') {
                         args[0] = '[NekoJS_WARN] ' + args[0];
                         originalWarn.apply(console, args);
@@ -73,7 +60,6 @@ public final class NekoSandboxBuilder {
                 console.debug = function(...args) {
                     if (args.length > 0 && typeof args[0] === 'string') {
                         args[0] = '[NekoJS_DEBUG] ' + args[0];
-                        // 注意：debug 走的是标准输出 (log)，所以我们用 originalLog
                         console.log.apply(console, args);
                     } else {
                         console.log.apply(console, ['[NekoJS_DEBUG]', ...args]);
@@ -82,15 +68,18 @@ public final class NekoSandboxBuilder {
             })();
             """;
 
-    private NekoSandboxBuilder() {
-    }
+    private NekoSandboxBuilder() {}
 
-    public static Context build(ScriptType type) {
+    private static HostAccess createSharedHostAccess() {
         HostAccess.Builder hostBuilder = HostAccess.newBuilder(HostAccess.ALL)
                 .allowAllClassImplementations(true)
                 .allowAllImplementations(true);
 
         NekoJSTypeAdapters.all().forEach(adapter -> registerTypeAdapter(hostBuilder, adapter));
+        return hostBuilder.build();
+    }
+
+    public static Context build(ScriptType type) {
         boolean isSandboxDisabled = NekoJSPaths.disableStrictSandbox;
 
         Logger logger = type.logger();
@@ -98,17 +87,17 @@ public final class NekoSandboxBuilder {
         OutputStream errStream = new LoggerStream(logger, true);
 
         Context ctx = Context.newBuilder("js")
+                .engine(SHARED_ENGINE)
                 .allowExperimentalOptions(true)
                 .out(outStream)
                 .err(errStream)
-                .allowHostAccess(hostBuilder.build())
-                .allowIO(IOAccess.newBuilder().fileSystem(new NekoJSFileSystem(NekoJSPaths.ROOT)).build())
+                .allowHostAccess(SHARED_HOST_ACCESS)
+                .allowIO(SHARED_IO_ACCESS)
                 .allowCreateThread(true)
                 .allowHostClassLookup(c -> {
                     if (isSandboxDisabled) return true;
                     return CLASS_BLACKLIST.stream().noneMatch(c::startsWith);
                 })
-                .option("engine.WarnInterpreterOnly", "false")
                 .option("js.foreign-object-prototype", "true")
                 .option("js.nashorn-compat", "true")
                 .option("js.ecmascript-version", "latest")
@@ -118,6 +107,7 @@ public final class NekoSandboxBuilder {
 
         ctx.eval("js", CONSOLE_PATCH_JS);
         ctx.eval("js", "Java.loadClass = Java.type;");
+
         try {
             ctx.eval("js", """
                         if (typeof require !== 'undefined' && require.extensions) {

@@ -24,8 +24,6 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
-import net.neoforged.fml.config.ModConfig;
-import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
 import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.neoforged.fml.loading.FMLEnvironment;
 import net.neoforged.neoforge.common.NeoForge;
@@ -63,7 +61,7 @@ public class NekoJS {
         LOGGER.info("[NekoJS] 正在执行 STARTUP 与 COMMON 脚本...");
         SCRIPT_MANAGER.discoverScripts();
         SCRIPT_MANAGER.loadScripts(ScriptType.STARTUP);
-        SCRIPT_MANAGER.loadScripts(ScriptType.COMMON);
+//        SCRIPT_MANAGER.loadScripts(ScriptType.COMMON);
 
         if (FMLEnvironment.getDist() == Dist.CLIENT) {
             NekoJSClient.register(modEventBus);

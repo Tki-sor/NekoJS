@@ -40,4 +40,8 @@ public interface LevelExtension {
     default Entity neko$spawnLightning(double x, double y, double z) {
         return neko$spawnEntity(EntityType.LIGHTNING_BOLT, x, y, z);
     }
+
+    default String neko$getId() {
+        return self().dimension().identifier().toString();
+    }
 }

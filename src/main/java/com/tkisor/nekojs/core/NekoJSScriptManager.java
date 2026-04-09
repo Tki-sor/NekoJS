@@ -24,8 +24,10 @@ public final class NekoJSScriptManager {
     private final Map<ScriptType, Context> contexts = new ConcurrentHashMap<>();
     private final Map<ScriptType, List<ScriptContainer>> scripts = new ConcurrentHashMap<>();
 
+    private static final Map<Context, ScriptType> CONTEXT_TYPE_MAP = Collections.synchronizedMap(new WeakHashMap<>());
+
     public NekoJSScriptManager() {
-        for (ScriptType type : ScriptType.values()) {
+        for (ScriptType type : ScriptType.all()) {
             scripts.put(type, new ArrayList<>());
         }
     }
@@ -34,7 +36,7 @@ public final class NekoJSScriptManager {
      * 一次性扫描并发现所有环境类型 (STARTUP, SERVER, CLIENT, COMMON) 的脚本文件
      */
     public void discoverScripts() {
-        for (ScriptType type : ScriptType.values()) {
+        for (ScriptType type : ScriptType.all()) {
             discoverScripts(type);
         }
     }
@@ -66,6 +68,7 @@ public final class NekoJSScriptManager {
 
     private Context initContext(ScriptType type) {
         Context ctx = NekoSandboxBuilder.build(type);
+        CONTEXT_TYPE_MAP.put(ctx, type);
 
         var bindings = ctx.getBindings("js");
 
@@ -150,5 +153,14 @@ public final class NekoJSScriptManager {
 
     public boolean hasScripts(ScriptType type) {
         return !scripts.get(type).isEmpty();
+    }
+
+    /**
+     * 从上下文获取对应的脚本类型
+     * @param context 执行上下文
+     * @return 对应的脚本类型
+     */
+    public static ScriptType getTypeFromContext(Context context) {
+        return CONTEXT_TYPE_MAP.get(context);
     }
 }

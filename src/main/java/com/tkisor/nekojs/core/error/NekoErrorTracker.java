@@ -3,6 +3,10 @@ package com.tkisor.nekojs.core.error;
 import com.tkisor.nekojs.core.fs.NekoJSPaths;
 import com.tkisor.nekojs.script.ScriptContainer;
 import com.tkisor.nekojs.script.ScriptType;
+import net.minecraft.network.chat.ClickEvent;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.HoverEvent;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.Identifier;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
@@ -20,7 +24,7 @@ public class NekoErrorTracker {
     }
 
     public static void recordEventError(PolyglotException e) {
-        String pathStr = "未知脚本";
+        String pathStr = "null_script";
         int line = -1;
 
         if (e.getSourceLocation() != null) {
@@ -45,16 +49,16 @@ public class NekoErrorTracker {
         }
 
         // 根据路径动态推断环境并打印到对应 log 文件
-        ScriptType targetType = ScriptType.COMMON;
+        ScriptType targetType = ScriptType.SERVER;
         String lowerPath = pathStr.toLowerCase();
-        for (ScriptType type : ScriptType.values()) {
+        for (ScriptType type : ScriptType.all()) {
             if (lowerPath.contains(type.name + "_scripts")) {
                 targetType = type;
                 break;
             }
         }
 
-        targetType.logger().error("事件监听器执行异常于 [{}]: {}", pathStr, e.getMessage(), e);
+        targetType.logger().error("[{}]: {}", pathStr, e.getMessage(), e);
 
         String uniqueHashInput = pathStr + "_" + line + "_" + e.getMessage();
         String safeHash = Integer.toHexString(uniqueHashInput.hashCode());
@@ -85,5 +89,22 @@ public class NekoErrorTracker {
 
     public static Collection<ScriptError> getAllErrors() {
         return ERRORS.values();
+    }
+
+    public static Component getErrorComponent() {
+        int errorCount = ERRORS.size();
+        MutableComponent literal = Component.literal("§c[NekoJS] ⚠ 警告：引擎目前存在 " + errorCount + " 个脚本运行错误。");
+        literal.append(Component.literal("\n"));
+        MutableComponent dashboardLink = Component.literal("  §a▶ §n[点击此处打开错误列表]")
+                .withStyle(style -> style
+                        .withHoverEvent(new HoverEvent.ShowText(Component.literal("§e在全屏列表中统一查看和管理错误")))
+                        .withClickEvent(new ClickEvent.RunCommand("/nekojs view_all_errors"))
+                );
+        literal.append(dashboardLink);
+        return literal;
+    }
+
+    public static Component getSuccessComponent() {
+        return Component.literal("§a[NekoJS] ✔ 脚本完美重载！");
     }
 }

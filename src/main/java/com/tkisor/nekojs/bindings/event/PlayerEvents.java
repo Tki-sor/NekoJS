@@ -3,9 +3,12 @@ package com.tkisor.nekojs.bindings.event;
 import com.tkisor.nekojs.api.event.EventBusForgeBridge;
 import com.tkisor.nekojs.api.event.EventBusJS;
 import com.tkisor.nekojs.api.event.EventGroup;
+import com.tkisor.nekojs.utils.event.dispatch.DispatchKey;
+import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.ServerChatEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 import net.neoforged.neoforge.event.tick.PlayerTickEvent;
 
 public interface PlayerEvents {
@@ -21,11 +24,15 @@ public interface PlayerEvents {
             GROUP.server("tickPre", PlayerTickEvent.Pre.class);
     EventBusJS<PlayerEvent.PlayerRespawnEvent, Void> RESPAWNED =
             GROUP.server("respawned", PlayerEvent.PlayerRespawnEvent.class);
+    EventBusJS<PlayerInteractEvent.EntityInteract, Void> ENTITY_INTERACT =
+            GROUP.server("entityInteract", PlayerInteractEvent.EntityInteract.class);
+
 
     EventBusForgeBridge FORGE_BRIDGE = EventBusForgeBridge.create(NeoForge.EVENT_BUS)
             .bind(LOGGED_IN)
             .bind(CHAT)
             .bind(TICK_POST)
             .bind(TICK_PRE)
-            .bind(RESPAWNED);
+            .bind(RESPAWNED)
+            .bind(ENTITY_INTERACT);
 }

@@ -25,15 +25,17 @@ public final class ScriptLocator {
             return containers;
         }
 
-        try (Stream<Path> stream = Files.list(dir)) {
-            stream.filter(p -> {
+        try (Stream<Path> stream = Files.walk(dir)) {
+            stream.filter(Files::isRegularFile)
+                    .filter(p -> !p.toString().contains("node_modules"))
+                    .filter(p -> {
                         String fileName = p.toString().toLowerCase();
                         return fileName.endsWith(".js") ||
                                 fileName.endsWith(".ts") ||
                                 fileName.endsWith(".tsx") ||
                                 fileName.endsWith(".jsx");
                     })
-                    .sorted(Comparator.comparing(p -> p.getFileName().toString()))
+                    .sorted(Comparator.comparing(p -> dir.relativize(p).toString().replace("\\", "/")))
                     .forEach(p -> containers.add(new ScriptContainer(type.makeId(p), type, p)));
         } catch (Exception e) {
             type.logger().error("扫描脚本目录失败: {}", dir, e);

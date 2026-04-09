@@ -8,10 +8,11 @@ import org.slf4j.Logger;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.concurrent.Executor;
 
 public enum ScriptType {
-    COMMON("common", "NekoJS Common", NekoJSPaths.COMMON_SCRIPTS),
+    COMMON("common", "NekoJS Common", null),
     STARTUP("startup", "NekoJS Startup", NekoJSPaths.STARTUP_SCRIPTS),
     SERVER("server", "NekoJS Server", NekoJSPaths.SERVER_SCRIPTS),
     CLIENT("client", "NekoJS Client", NekoJSPaths.CLIENT_SCRIPTS);
@@ -86,5 +87,14 @@ public enum ScriptType {
 
     public boolean isStartup() {
         return this == STARTUP;
+    }
+
+    private static final List<ScriptType> EXECUTABLE_TYPES = List.of(STARTUP, SERVER, CLIENT);
+
+    /**
+     * 获取所有需要被动态加载执行的脚本类型（已排除 COMMON）
+     */
+    public static List<ScriptType> all() {
+        return EXECUTABLE_TYPES;
     }
 }

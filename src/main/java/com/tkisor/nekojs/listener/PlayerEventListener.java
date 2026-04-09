@@ -29,22 +29,25 @@ public class PlayerEventListener {
 
                 int errorCount = NekoErrorTracker.getAllErrors().size();
 
-                player.sendSystemMessage(Component.literal("§c[NekoJS] ⚠ 警告：引擎目前存在 " + errorCount + " 个脚本运行错误。"));
+//                player.sendSystemMessage();
 
+                MutableComponent literal = Component.literal("§c[NekoJS] ⚠ 警告：引擎目前存在 " + errorCount + " 个脚本运行错误。");
+                literal.append(Component.literal("\n"));
                 MutableComponent dashboardLink = Component.literal("  §a▶ §n[点击此处打开错误列表]")
                         .withStyle(style -> style
                                 .withHoverEvent(new HoverEvent.ShowText(Component.literal("§e在全屏列表中统一查看和管理错误")))
                                 .withClickEvent(new ClickEvent.RunCommand("/nekojs view_all_errors"))
                         );
+                literal.append(dashboardLink);
 
-                player.sendSystemMessage(dashboardLink);
+                player.sendSystemMessage(literal);
             }
         }
     }
 
     @SubscribeEvent
     public static void onItemRightClick(PlayerInteractEvent.RightClickItem event) {
-        ItemEvents.RIGHT_CLICKED.post(event, event.getItemStack().getItem().toString());
+        ItemEvents.RIGHT_CLICKED.post(event, event.getItemStack());
     }
 
     @SubscribeEvent
@@ -54,7 +57,12 @@ public class PlayerEventListener {
 
     @SubscribeEvent
     public static void onItemCrafted(PlayerEvent.ItemCraftedEvent event) {
-        ItemEvents.CRAFTED.post(event);
+        ItemEvents.CRAFTED.post(event, event.getCrafting());
+    }
+
+    @SubscribeEvent
+    public static void onEntityInteract(PlayerInteractEvent.EntityInteract event) {
+        PlayerEvents.ENTITY_INTERACT.post(event);
     }
 
     @SubscribeEvent
