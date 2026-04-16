@@ -2,6 +2,7 @@ package com.tkisor.nekojs.core;
 
 import com.tkisor.nekojs.script.ScriptContainer;
 import com.tkisor.nekojs.script.ScriptType;
+import com.tkisor.nekojs.script.prop.ScriptPropertyRegistry;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -19,7 +20,7 @@ public final class ScriptLocator {
 
     private ScriptLocator() {}
 
-    public static List<ScriptContainer> discover(ScriptType type) {
+    public static List<ScriptContainer> discover(ScriptType type, ScriptPropertyRegistry propertyRegistry) {
         List<ScriptContainer> containers = new ArrayList<>();
         Path dir = type.path;
 
@@ -36,7 +37,8 @@ public final class ScriptLocator {
                         return lastDot >= 0 && VALID_SUFFIXES.contains(fileName.substring(lastDot + 1));
                     })
                     .sorted()
-                    .forEach(p -> containers.add(new ScriptContainer(type.makeId(p), type, p)));
+                    .map(path -> new ScriptContainer(type.makeId(path), type, path, propertyRegistry))
+                    .forEach(containers::add);
         } catch (Exception e) {
             type.logger().error("扫描脚本目录失败: {}", dir, e);
         }

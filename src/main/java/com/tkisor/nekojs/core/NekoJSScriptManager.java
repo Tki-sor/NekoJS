@@ -50,7 +50,7 @@ public final class NekoJSScriptManager {
      * 发现并准备环境，但不执行
      */
     public void discoverScripts(ScriptType type) {
-        List<ScriptContainer> discovered = ScriptLocator.discover(type);
+        List<ScriptContainer> discovered = ScriptLocator.discover(type, scriptPropertyRegistry);
         scripts.set(type, discovered);
         type.logger().info("发现了 {} 个 {} 脚本。", discovered.size(), type.name());
     }
@@ -59,12 +59,14 @@ public final class NekoJSScriptManager {
      * 加载并顺序执行所有脚本
      */
     public void loadScripts(ScriptType type) {
-        List<ScriptContainer> typeScripts = scripts.at(type);
-        if (typeScripts == null || typeScripts.isEmpty()) return;
-
+        List<ScriptContainer> scripts = this.scripts.at(type);
         Context ctx = contexts.at(type);
 
-        for (ScriptContainer script : typeScripts) {
+        for (var script : scripts) {
+            script.preload();
+        }
+
+        for (ScriptContainer script : scripts) {
             if (!script.disabled) {
                 runScript(ctx, script);
             }
