@@ -6,7 +6,6 @@ import com.tkisor.nekojs.script.ScriptType;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Stream;
@@ -36,7 +35,7 @@ public final class ScriptLocator {
                         var lastDot = fileName.lastIndexOf('.');
                         return lastDot >= 0 && VALID_SUFFIXES.contains(fileName.substring(lastDot + 1));
                     })
-                    .sorted(Comparator.comparing(p -> dir.relativize(p).toString().replace("\\", "/")))
+                    .sorted()
                     .forEach(p -> containers.add(new ScriptContainer(type.makeId(p), type, p)));
         } catch (Exception e) {
             type.logger().error("扫描脚本目录失败: {}", dir, e);
