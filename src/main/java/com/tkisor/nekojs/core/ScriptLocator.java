@@ -8,12 +8,15 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Stream;
 
 /**
  * 专门负责在文件系统中发现和整理脚本文件
  */
 public final class ScriptLocator {
+
+    private static final Set<String> VALID_SUFFIXES = Set.of("js", "ts", "jsx", "tsx");
 
     private ScriptLocator() {}
 
@@ -29,11 +32,9 @@ public final class ScriptLocator {
             stream.filter(Files::isRegularFile)
                     .filter(p -> !p.toString().contains("node_modules"))
                     .filter(p -> {
-                        String fileName = p.toString().toLowerCase();
-                        return fileName.endsWith(".js") ||
-                                fileName.endsWith(".ts") ||
-                                fileName.endsWith(".tsx") ||
-                                fileName.endsWith(".jsx");
+                        var fileName = p.getFileName().toString();
+                        var lastDot = fileName.lastIndexOf('.');
+                        return lastDot >= 0 && VALID_SUFFIXES.contains(fileName.substring(lastDot + 1));
                     })
                     .sorted(Comparator.comparing(p -> dir.relativize(p).toString().replace("\\", "/")))
                     .forEach(p -> containers.add(new ScriptContainer(type.makeId(p), type, p)));
