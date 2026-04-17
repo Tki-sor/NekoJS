@@ -10,9 +10,8 @@ import com.tkisor.nekojs.core.fs.NekoJSPaths;
 import com.tkisor.nekojs.script.ScriptContainer;
 import com.tkisor.nekojs.script.ScriptType;
 import com.tkisor.nekojs.script.ScriptTypedValue;
-import com.tkisor.nekojs.script.prop.ScriptPropertyRegistry;
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Value;
+import graal.graalvm.polyglot.Context;
+import graal.graalvm.polyglot.Value;
 
 import java.nio.file.Path;
 import java.util.*;
@@ -23,18 +22,12 @@ import java.util.*;
 public final class NekoJSScriptManager {
 
     private final ScriptTypedValue<Context> contexts = ScriptTypedValue.ofNullable(this::initContext);
+
     private final ScriptTypedValue<List<ScriptContainer>> scripts = ScriptTypedValue.of(type -> new ArrayList<>());
-    private final ScriptPropertyRegistry scriptPropertyRegistry = new ScriptPropertyRegistry.Impl();
 
     private static final Map<Context, ScriptType> CONTEXT_TYPE_MAP = Collections.synchronizedMap(new WeakHashMap<>());
 
     public NekoJSScriptManager() {
-    }
-
-    public void registerScriptProperty() {
-        for (var plugin : NekoJSPluginManager.getPlugins()) {
-            plugin.registerScriptProperty(scriptPropertyRegistry);
-        }
     }
 
     /**
@@ -50,7 +43,7 @@ public final class NekoJSScriptManager {
      * 发现并准备环境，但不执行
      */
     public void discoverScripts(ScriptType type) {
-        List<ScriptContainer> discovered = ScriptLocator.discover(type, scriptPropertyRegistry);
+        List<ScriptContainer> discovered = ScriptLocator.discover(type);
         scripts.set(type, discovered);
         type.logger().info("发现了 {} 个 {} 脚本。", discovered.size(), type.name());
     }
@@ -59,15 +52,13 @@ public final class NekoJSScriptManager {
      * 加载并顺序执行所有脚本
      */
     public void loadScripts(ScriptType type) {
-        List<ScriptContainer> scripts = this.scripts.at(type);
+        List<ScriptContainer> typeScripts = scripts.at(type);
+        if (typeScripts == null || typeScripts.isEmpty()) return;
+
         Context ctx = contexts.at(type);
 
-        for (var script : scripts) {
-            script.preload();
-        }
-
-        for (ScriptContainer script : scripts) {
-            if (script.shouldRun()) {
+        for (ScriptContainer script : typeScripts) {
+            if (!script.disabled) {
                 runScript(ctx, script);
             }
         }
