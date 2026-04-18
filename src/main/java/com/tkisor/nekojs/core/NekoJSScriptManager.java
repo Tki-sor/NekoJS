@@ -10,6 +10,7 @@ import com.tkisor.nekojs.core.fs.NekoJSPaths;
 import com.tkisor.nekojs.script.ScriptContainer;
 import com.tkisor.nekojs.script.ScriptType;
 import com.tkisor.nekojs.script.ScriptTypedValue;
+import com.tkisor.nekojs.script.prop.ScriptProperty;
 import com.tkisor.nekojs.script.prop.ScriptPropertyRegistry;
 import graal.graalvm.polyglot.Context;
 import graal.graalvm.polyglot.PolyglotException;
@@ -69,6 +70,13 @@ public final class NekoJSScriptManager {
         for (var script : scripts) {
             script.preload();
         }
+
+        scripts.sort((s1, s2) -> {
+            int p1 = s1.properties.getOrDefault(ScriptProperty.PRIORITY);
+            int p2 = s2.properties.getOrDefault(ScriptProperty.PRIORITY);
+
+            return Integer.compare(p2, p1);
+        });
 
         for (ScriptContainer script : scripts) {
             if (script.shouldRun()) {
