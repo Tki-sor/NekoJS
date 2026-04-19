@@ -8,17 +8,12 @@ import net.neoforged.fml.loading.FMLPaths;
 import net.neoforged.neoforge.common.NeoForge;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
-import java.util.Properties;
 
 public final class NekoJSPaths {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
-
-    public static boolean disableStrictSandbox = false;
 
     /* ================= Base ================= */
     public static final Path GAME_DIR = FMLPaths.GAMEDIR.get().normalize().toAbsolutePath();
@@ -37,7 +32,7 @@ public final class NekoJSPaths {
     /* ================= Config & DX ================= */
     public static final Path CONFIG = ROOT.resolve("config");
     public static final Path README = ROOT.resolve("README.txt");
-    public static final Path ENGINE_CONFIG = CONFIG.resolve("engine.properties");
+    public static final Path ENGINE_CONFIG = CONFIG.resolve("engine.toml");
 
     /* ================= Initialization ================= */
     public static void initFoldersOnly() {
@@ -51,7 +46,7 @@ public final class NekoJSPaths {
         ensureDir(NODE_MODULES);
 
         createReadme();
-        loadEngineConfig();
+        ClassFilter.loadEngineConfig();
     }
 
     /* ================= Utilities ================= */
@@ -63,26 +58,7 @@ public final class NekoJSPaths {
         }
     }
 
-    private static void loadEngineConfig() {
-        Properties props = new Properties();
-        try {
-            if (Files.exists(ENGINE_CONFIG)) {
-                try (InputStream is = Files.newInputStream(ENGINE_CONFIG)) {
-                    props.load(is);
-                    disableStrictSandbox = Boolean.parseBoolean(props.getProperty("disableStrictSandbox", "false"));
-                }
-            } else {
-                props.setProperty("disableStrictSandbox", "false");
-                try (OutputStream os = Files.newOutputStream(ENGINE_CONFIG)) {
-                    props.store(os, "NekoJS Engine Core Configuration\n" +
-                            "# WARNING: Setting disableStrictSandbox to true will allow scripts to access dangerous Java classes (e.g., IO, Reflection).");
-                }
-            }
-            NekoJS.LOGGER.info("[NekoJS] Engine config loaded. Sandbox disabled status: {}", disableStrictSandbox);
-        } catch (Exception e) {
-            NekoJS.LOGGER.error("[NekoJS] Failed to load engine.properties", e);
-        }
-    }
+
 
     public static Path verifyInsideGameDir(Path path) throws IOException {
         Path normalized = path.normalize().toAbsolutePath();

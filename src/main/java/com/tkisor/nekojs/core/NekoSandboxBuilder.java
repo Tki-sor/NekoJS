@@ -2,6 +2,7 @@ package com.tkisor.nekojs.core;
 
 import com.tkisor.nekojs.api.JSTypeAdapter;
 import com.tkisor.nekojs.api.data.NekoJSTypeAdapters;
+import com.tkisor.nekojs.core.fs.ClassFilter;
 import com.tkisor.nekojs.core.fs.NekoJSFileSystem;
 import com.tkisor.nekojs.core.fs.NekoJSPaths;
 import com.tkisor.nekojs.core.log.LoggerStream;
@@ -14,7 +15,6 @@ import graal.graalvm.polyglot.io.IOAccess;
 import org.slf4j.Logger;
 
 import java.io.OutputStream;
-import java.util.Set;
 
 /**
  * 专门负责构建安全 GraalVM 沙盒的工厂类
@@ -31,18 +31,6 @@ public final class NekoSandboxBuilder {
     private static final IOAccess SHARED_IO_ACCESS = IOAccess.newBuilder()
             .fileSystem(new NekoJSFileSystem(NekoJSPaths.ROOT))
             .build();
-
-    private static final Set<String> CLASS_BLACKLIST = Set.of(
-            "java.lang.Runtime", "java.lang.Process", "java.lang.ProcessBuilder",
-            "java.lang.Thread", "java.lang.ThreadGroup", "java.lang.ClassLoader",
-            "java.lang.System", "java.lang.reflect", "java.lang.invoke.MethodHandles",
-            "java.io", "java.nio", "java.net", "java.util.jar", "java.util.zip",
-            "sun", "com.sun", "org.objectweb.asm", "org.spongepowered.asm",
-            "io.netty", "org.openjdk.nashorn", "jdk.nashorn", "org.lwjgl.system",
-            "javax.script", "graal.graalvm.polyglot",
-            "net.neoforged.fml", "net.neoforged.accesstransformer", "net.neoforged.coremod",
-            "cpw.mods.modlauncher", "cpw.mods.gross"
-    );
 
     private static final String CONSOLE_PATCH_JS = """
             (function() {
@@ -80,8 +68,6 @@ public final class NekoSandboxBuilder {
     }
 
     public static Context build(ScriptType type) {
-        boolean isSandboxDisabled = NekoJSPaths.disableStrictSandbox;
-
         Logger logger = type.logger();
         OutputStream outStream = new LoggerStream(logger, false);
         OutputStream errStream = new LoggerStream(logger, true);
@@ -94,10 +80,7 @@ public final class NekoSandboxBuilder {
                 .allowHostAccess(SHARED_HOST_ACCESS)
                 .allowIO(SHARED_IO_ACCESS)
                 .allowCreateThread(true)
-                .allowHostClassLookup(c -> {
-                    if (isSandboxDisabled) return true;
-                    return CLASS_BLACKLIST.stream().noneMatch(c::startsWith);
-                })
+                .allowHostClassLookup(ClassFilter.INSTANCE)
                 .option("js.foreign-object-prototype", "true")
                 .option("js.nashorn-compat", "true")
                 .option("js.ecmascript-version", "latest")
@@ -126,10 +109,6 @@ public final class NekoSandboxBuilder {
         return ctx;
     }
 
-    /**
-     * 专门用于解决 Java 泛型通配符捕获问题的辅助方法
-     * 它将未知的 <?> 强行绑定为确定的 <T>，满足 GraalVM 的方法签名要求
-     */
     private static <T> void registerTypeAdapter(HostAccess.Builder builder, JSTypeAdapter<T> adapter) {
         builder.targetTypeMapping(
                         Value.class,

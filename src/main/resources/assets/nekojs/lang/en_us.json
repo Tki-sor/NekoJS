@@ -98,5 +98,21 @@
   "nekojs.error.tracker.warning": "§c[NekoJS] ⚠ Warning: The engine currently has %s active script error(s).",
   "nekojs.error.tracker.open_list": "  §a▶ §n[Click here to open Error Dashboard]",
   "nekojs.error.tracker.hover_hint": "§eOpen the fullscreen dashboard to manage all errors",
-  "nekojs.error.tracker.success": "§a[NekoJS] ✔ Scripts reloaded perfectly!"
+  "nekojs.error.tracker.success": "§a[NekoJS] ✔ Scripts reloaded perfectly!",
+
+  "nekojs.security.toast.title": "NekoJS Security Warning",
+  "nekojs.security.toast.desc": "Strict class access sandbox is partially disabled. Be aware of the risks!",
+  "nekojs.security.chat.header": "[NekoJS Engine Security Prompt]",
+  "nekojs.security.chat.body1": "The current NekoJS environment has ",
+  "nekojs.security.chat.body2": "partially disabled the strict Java class access sandbox",
+  "nekojs.security.chat.body3": ".\nThis is usually because the modpack author needs low-level APIs for advanced control, meaning scripts have high system-level permissions. Ensure you trust the source of this modpack.",
+  "nekojs.security.chat.hover_hint": "[Hover here to see the unlocked low-level permissions]",
+
+  "nekojs.security.detail.header": "Currently Unlocked High-Risk Class Groups:",
+  "nekojs.security.detail.threads.title": "■ Multi-threading & Concurrency (java.lang.Thread)",
+  "nekojs.security.detail.threads.desc": "Allows scripts to create unregulated background threads, which may cause game stuttering or resource leaks.",
+  "nekojs.security.detail.reflection.title": "■ Reflection & Code Injection (java.lang.reflect / MethodHandles)",
+  "nekojs.security.detail.reflection.desc": "Allows scripts to forcefully access and modify private Java data via reflection, bypassing all security restrictions.",
+  "nekojs.security.detail.asm.title": "■ Game Core Kernel Modification (org.objectweb.asm)",
+  "nekojs.security.detail.asm.desc": "Allows scripts to directly manipulate and modify Java bytecode. Improper operation will cause severe crashes."
 }

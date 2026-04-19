@@ -98,5 +98,21 @@
   "nekojs.error.tracker.warning": "§c[NekoJS] ⚠ 警告：引擎目前存在 %s 个脚本运行错误。",
   "nekojs.error.tracker.open_list": "  §a▶ §n[点击此处打开错误列表]",
   "nekojs.error.tracker.hover_hint": "§e在全屏列表中统一查看和管理错误",
-  "nekojs.error.tracker.success": "§a[NekoJS] ✔ 脚本完美重载！"
+  "nekojs.error.tracker.success": "§a[NekoJS] ✔ 脚本完美重载！",
+
+  "nekojs.security.toast.title": "NekoJS 危险警告",
+  "nekojs.security.toast.desc": "部分严格类访问沙盒已被解禁，请注意风险！",
+  "nekojs.security.chat.header": "[NekoJS 引擎安全提示]",
+  "nekojs.security.chat.body1": "当前的 NekoJS 环境已 ",
+  "nekojs.security.chat.body2": "部分关闭严格的 Java 类访问沙盒",
+  "nekojs.security.chat.body3": "。\n这通常是因为整合包作者需要使用底层 API 进行高级控制，但这也意味着脚本获得了较高的系统级权限。请确保您信任该整合包的来源。",
+  "nekojs.security.chat.hover_hint": "[鼠标悬停查看解禁的底层权限列表]",
+
+  "nekojs.security.detail.header": "当前环境已解禁的高危类库群组：",
+  "nekojs.security.detail.threads.title": "■ 多线程与并发处理 (java.lang.Thread)",
+  "nekojs.security.detail.threads.desc": "允许脚本在后台创建无管制的常驻线程，可能会引发游戏卡顿或资源泄漏。",
+  "nekojs.security.detail.reflection.title": "■ 反射与代码注入 (java.lang.reflect / MethodHandles)",
+  "nekojs.security.detail.reflection.desc": "允许脚本通过反射强行越权访问和修改 Java 私有数据，可绕过所有安全限制。",
+  "nekojs.security.detail.asm.title": "■ 游戏底层内核修改 (org.objectweb.asm)",
+  "nekojs.security.detail.asm.desc": "允许脚本直接操作并修改 Java 字节码，操作不当会导致严重的运行崩溃。"
 }
