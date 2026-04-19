@@ -4,7 +4,9 @@ import com.tkisor.nekojs.utils.event.CancellableEventBus;
 import com.tkisor.nekojs.utils.event.CommonPriority;
 import com.tkisor.nekojs.utils.event.EventListenerToken;
 
+import java.util.Arrays;
 import java.util.function.Consumer;
+import java.util.function.IntFunction;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 
@@ -14,8 +16,8 @@ import java.util.stream.Stream;
 public final class CancellableEventBusImpl<E>
     extends EventBusBase<E, Predicate<E>> implements CancellableEventBus<E> {
 
-    public CancellableEventBusImpl(Class<E> eventType) {
-        super(eventType);
+    public CancellableEventBusImpl(Class<E> eventType, Object key) {
+        super(eventType, key);
     }
 
     @Override
@@ -34,7 +36,7 @@ public final class CancellableEventBusImpl<E>
     }
 
     private static <E> Predicate<E> compile(Stream<Predicate<E>> predicateStream) {
-        var arr = (Predicate<E>[]) predicateStream.toArray(Predicate[]::new);
+        var arr = predicateStream.toArray((IntFunction<Predicate<E>[]>) Predicate[]::new);
         switch (arr.length) {
             case 0:
                 return (ignored) -> false;
@@ -47,15 +49,21 @@ public final class CancellableEventBusImpl<E>
                 var p2 = arr[1];
                 var p3 = arr[2];
                 return event -> p1.test(event) || p2.test(event) || p3.test(event);
-            default:
-                return event -> {
-                    for (var predicate : arr) {
-                        if (predicate.test(event)) {
-                            return true;
-                        }
-                    }
-                    return false;
-                };
         }
+        if (Arrays.stream(arr).allMatch(NeverCancelListener.class::isInstance)) {
+            var consumer = EventBusImpl.compile(
+                Arrays.stream(arr)
+                    .map(pred -> ((NeverCancelListener<E>) pred).consumer())
+            );
+            return new NeverCancelListener<>(consumer);
+        }
+        return event -> {
+            for (var predicate : arr) {
+                if (predicate.test(event)) {
+                    return true;
+                }
+            }
+            return false;
+        };
     }
 }
