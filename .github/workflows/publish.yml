@@ -7,7 +7,9 @@ on:
     branches: [ "master" ]
 
 jobs:
-  # 阶段 1：分析 Commit 信息，决定是“开发构建”还是“正式发版”
+  # ==========================================
+  # 阶段 1：分析 Commit 信息，决定发版策略
+  # ==========================================
   analyze-commit:
     runs-on: ubuntu-latest
     outputs:
@@ -17,7 +19,10 @@ jobs:
       - name: Extract version from commit message
         id: match
         run: |
-          # 注意：如果是 pull_request，head_commit 可能是空的，正则会自动匹配失败，走向 dev 分支
+          # 开启正则忽略大小写，防止写了 "Update" 导致匹配失败
+          shopt -s nocasematch 
+          
+          # 注意：如果是 pull_request，head_commit 可能是空的，这会自动走向 dev 分支
           COMMIT_MSG="${{ github.event.head_commit.message }}"
           REGEX="update ([0-9a-zA-Z.-]+)"
           
@@ -30,7 +35,9 @@ jobs:
             echo "is_release=false" >> $GITHUB_OUTPUT
           fi
 
+  # ==========================================
   # 阶段 2：执行构建与分发
+  # ==========================================
   build-and-distribute:
     needs: analyze-commit
     runs-on: ubuntu-latest
@@ -60,7 +67,7 @@ jobs:
       - name: Build Mod
         run: ./gradlew build
 
-      # 重命名：智能判断加后缀
+      # 重命名：智能判断是否加 -dev-hash 后缀
       - name: Rename Artifacts
         run: |
           SHORT_SHA=$(git rev-parse --short HEAD)
@@ -69,14 +76,14 @@ jobs:
           cd build/libs
           for f in *.jar; do
             if [[ $f != *"-sources.jar"* && $f != *"-dev.jar"* && $f != *"-plain.jar"* ]]; then
-              if [ "$IS_RELEASE" == "true" ]; ]; then
-                # 正式发版的包名格式：NekoJS-1.0.0-abcd123.jar
-                new_name="${f%.jar}-${SHORT_SHA}.jar"
+              if [ "$IS_RELEASE" == "true" ]; then
+                # 正式发版：直接保持 Gradle 默认产出的名字 (例如 nekojs-26.1.2-1.0.7.jar)
+                echo "Release build, keeping original name: $f"
               else
-                # 开发版的包名格式：NekoJS-1.0.0-dev-abcd123.jar
+                # 开发版：追加 -dev-hash (例如 nekojs-26.1.2-1.0.7-dev-abcd123.jar)
                 new_name="${f%.jar}-dev-${SHORT_SHA}.jar"
+                mv "$f" "$new_name"
               fi
-              mv "$f" "$new_name"
             fi
           done
 
@@ -104,6 +111,7 @@ jobs:
             COMMITS=$(git log ${PREVIOUS_TAG}..HEAD --pretty=format:"* %s (%h)")
           fi
           
+          # 处理多行文本输出的 GitHub Actions 写法
           EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
           echo "notes<<$EOF" >> $GITHUB_OUTPUT
           echo "$COMMITS" >> $GITHUB_OUTPUT
@@ -116,8 +124,15 @@ jobs:
           tag_name: v${{ needs.analyze-commit.outputs.version }}
           name: NekoJS v${{ needs.analyze-commit.outputs.version }}
           body: |
-            Automated release triggered by commit.
-            
             ### 📝 更新日志 (Changelog)
             ${{ steps.changelog.outputs.notes }}
           files: build/libs/*.jar
+
+      # 自动推送至 CurseForge / Modrinth
+      - name: Publish to Mod Platforms
+        if: needs.analyze-commit.outputs.is_release == 'true'
+        env:
+          CURSEFORGE_KEY: ${{ secrets.CURSEFORGE_KEY }}
+          MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
+          CHANGELOG: ${{ steps.changelog.outputs.notes }}
+        run: ./gradlew publishUnified
