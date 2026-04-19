@@ -162,7 +162,7 @@ unifiedPublishing {
         // 依赖关系 (如果有的话，比如依赖 JEI 或某些前置)
          relations {
              depends {
-                 curseforge = "graal" // 填入对方的 slug
+                 curseforge = "graal"
              }
          }
 
