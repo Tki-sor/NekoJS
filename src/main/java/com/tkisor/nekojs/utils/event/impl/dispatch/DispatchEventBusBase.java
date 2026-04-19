@@ -29,17 +29,17 @@ abstract class DispatchEventBusBase<EVENT, KEY, BUS extends EventBusBase<EVENT, 
         this.dispatched = Objects.requireNonNull(dispatched);
     }
 
-    public Class<EVENT> eventType() {
+    public final Class<EVENT> eventType() {
         return mainBus.eventType();
     }
 
-    public DispatchKey<EVENT, KEY> dispatchKey() {
+    public final DispatchKey<EVENT, KEY> dispatchKey() {
         return dispatchKey;
     }
 
     protected abstract BUS createBus(Class<EVENT> eventType, KEY key);
 
-    public EventListenerToken<EVENT> listen(KEY key, byte priority, Consumer<EVENT> listener) {
+    public final EventListenerToken<EVENT> listen(KEY key, byte priority, Consumer<EVENT> listener) {
         if (key == null) {
             return mainBus.listen(priority, listener);
         }
@@ -48,19 +48,19 @@ abstract class DispatchEventBusBase<EVENT, KEY, BUS extends EventBusBase<EVENT, 
             .listen(priority, listener);
     }
 
-    public EventListenerToken<EVENT> listen(KEY key, Consumer<EVENT> listener) {
+    public final EventListenerToken<EVENT> listen(KEY key, Consumer<EVENT> listener) {
         return listen(key, CommonPriority.NORMAL, listener);
     }
 
-    public EventListenerToken<EVENT> listen(Consumer<EVENT> listener) {
+    public final EventListenerToken<EVENT> listen(Consumer<EVENT> listener) {
         return listen(null, CommonPriority.NORMAL, listener);
     }
 
-    public EventListenerToken<EVENT> listen(byte priority, Consumer<EVENT> listener) {
+    public final EventListenerToken<EVENT> listen(byte priority, Consumer<EVENT> listener) {
         return listen(null, priority, listener);
     }
 
-    public boolean unregister(EventListenerToken<EVENT> token) {
+    public final boolean unregister(EventListenerToken<EVENT> token) {
         var impl = (EventListenerTokenImpl<EVENT, ?>) token;
         if (impl.key() == null) {
             return mainBus.unregister(impl);
@@ -77,7 +77,7 @@ abstract class DispatchEventBusBase<EVENT, KEY, BUS extends EventBusBase<EVENT, 
         return result;
     }
 
-    public boolean post(EVENT event, KEY key) {
+    public final boolean post(EVENT event, KEY key) {
         if (mainBus.post(event)) {
             return true;
         }
@@ -90,7 +90,7 @@ abstract class DispatchEventBusBase<EVENT, KEY, BUS extends EventBusBase<EVENT, 
         return false;
     }
 
-    public boolean post(EVENT event) {
+    public final boolean post(EVENT event) {
         if (this.dispatched.isEmpty()) {
             // skip dispatching if there's no registered dispatched listener
             return mainBus.post(event);
