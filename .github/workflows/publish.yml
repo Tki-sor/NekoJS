@@ -18,18 +18,20 @@ jobs:
     steps:
       - name: Extract version from commit message
         id: match
+        env:
+          # 使用环境变量接收，防止消息中的 @ 等特殊字符被 Bash 解析为命令
+          RAW_COMMIT_MSG: ${{ github.event.head_commit.message }}
         run: |
-          # 开启正则忽略大小写，防止写了 "Update" 导致匹配失败
           shopt -s nocasematch 
           
-          # 注意：如果是 pull_request，head_commit 可能是空的，这会自动走向 dev 分支
-          COMMIT_MSG="${{ github.event.head_commit.message }}"
+          # 正则匹配：查找 update x.y.z 格式
           REGEX="update ([0-9a-zA-Z.-]+)"
           
-          if [[ "$COMMIT_MSG" =~ $REGEX ]]; then
-            echo "Matched version: ${BASH_REMATCH[1]} -> Going for RELEASE"
+          if [[ "$RAW_COMMIT_MSG" =~ $REGEX ]]; then
+            VERSION="${BASH_REMATCH[1]}"
+            echo "Matched version: $VERSION -> Going for RELEASE"
             echo "is_release=true" >> $GITHUB_OUTPUT
-            echo "version=${BASH_REMATCH[1]}" >> $GITHUB_OUTPUT
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
           else
             echo "No 'update' pattern found -> Going for DEV BUILD"
             echo "is_release=false" >> $GITHUB_OUTPUT
@@ -41,16 +43,15 @@ jobs:
   build-and-distribute:
     needs: analyze-commit
     runs-on: ubuntu-latest
-    # 给 Release 写入权限
     permissions:
       contents: write
 
     steps:
-      # --- 下面这部分是公共流程（无论发版还是开发都要走） ---
+      # --- 公共流程 ---
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # 获取完整历史以生成 Changelog
+          fetch-depth: 0
 
       - name: Set up JDK 25
         uses: actions/setup-java@v4
@@ -64,24 +65,22 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x ./gradlew
 
-      # 【关键修复】加入 clean，彻底清空可能被误提交的旧 jar
       - name: Build Mod
         run: ./gradlew clean build
 
-      # --- 【仅限开发版】重命名：追加 -dev-hash ---
-      # 【关键修复】此步骤独立，发版时完全不执行，杜绝误改名
+      # --- 【开发版专用】重命名产物 ---
       - name: Rename Dev Artifacts
         if: needs.analyze-commit.outputs.is_release == 'false'
         run: |
           SHORT_SHA=$(git rev-parse --short HEAD)
           cd build/libs
           for f in *.jar; do
+            # 排除已标记的文件，避免循环重命名
             if [[ $f != *"-sources.jar"* && $f != *"-dev"* && $f != *"-plain.jar"* ]]; then
               mv "$f" "${f%.jar}-dev-${SHORT_SHA}.jar"
             fi
           done
 
-      # --- 【仅限开发版】上传产物 ---
       - name: Upload Dev Artifact
         if: needs.analyze-commit.outputs.is_release == 'false'
         uses: actions/upload-artifact@v4
@@ -90,7 +89,7 @@ jobs:
           path: build/libs/*.jar
           retention-days: 14
 
-      # --- 【仅限发版】生成更新日志 ---
+      # --- 【发版专用】生成更新日志 ---
       - name: Generate Changelog
         if: needs.analyze-commit.outputs.is_release == 'true'
         id: changelog
@@ -103,13 +102,13 @@ jobs:
             COMMITS=$(git log ${PREVIOUS_TAG}..HEAD --pretty=format:"* %s (%h)")
           fi
           
-          # 处理多行文本输出的 GitHub Actions 写法
+          # 使用 GitHub 推荐的 EOF 方式处理多行文本
           EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
           echo "notes<<$EOF" >> $GITHUB_OUTPUT
           echo "$COMMITS" >> $GITHUB_OUTPUT
           echo "$EOF" >> $GITHUB_OUTPUT
 
-      # --- 【仅限发版】创建 GitHub Release ---
+      # --- 【发版专用】创建 GitHub Release ---
       - name: Create GitHub Release
         if: needs.analyze-commit.outputs.is_release == 'true'
         uses: softprops/action-gh-release@v2
@@ -119,12 +118,11 @@ jobs:
           body: |
             ### 📝 更新日志 (Changelog)
             ${{ steps.changelog.outputs.notes }}
-          # 【关键修复】明确排除带 dev 的文件，防止任何意外
           files: |
             build/libs/*.jar
             !build/libs/*-dev-*.jar
 
-      # --- 【仅限发版】自动推送至 CurseForge / Modrinth ---
+      # --- 【发版专用】自动推送至 Mod 平台 ---
       - name: Publish to Mod Platforms
         if: needs.analyze-commit.outputs.is_release == 'true'
         env:
