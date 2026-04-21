@@ -18,15 +18,17 @@ public class EventGroupJS implements ProxyObject {
 
     @Override
     public Object getMember(String key) {
-        var handler = group.buses.get(key);
-        if (handler == null) {
+        var busHolder = group.getBusHolder(key);
+        if (busHolder == null) {
             throw new IllegalArgumentException(String.format("No such event bus: %s.%s", group.name(), key));
         }
-        if (!group.isHandlerValidFor(key, currentEnv)) {
+
+        var bus = busHolder.getBus(this.currentEnv);
+        if (bus == null) {
             throw new IllegalArgumentException(String.format("Event '%s.%s' not available in %s", group.name(), key, currentEnv));
         }
 
-        return handler;
+        return bus;
     }
 
     @Override
