@@ -17,8 +17,8 @@ public class EventGroup {
         return new EventGroup(name);
     }
 
-    final String name;
-    final Map<String, RegisteredBus> buses;
+    private final String name;
+    private final Map<String, RegisteredBus> buses;
 
     private EventGroup(String name) {
         this.name = Objects.requireNonNull(name);

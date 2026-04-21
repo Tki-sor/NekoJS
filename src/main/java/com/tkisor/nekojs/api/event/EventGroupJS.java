@@ -4,16 +4,20 @@ import com.tkisor.nekojs.script.ScriptType;
 import graal.graalvm.polyglot.Value;
 import graal.graalvm.polyglot.proxy.ProxyObject;
 
+import java.util.Map;
+
 /**
  * @author ZZZank
  */
 public class EventGroupJS implements ProxyObject {
     private final EventGroup group;
     private final ScriptType currentEnv;
+    private final Map<String, EventGroup.BusHolder> busView;
 
     public EventGroupJS(EventGroup group, ScriptType currentEnv) {
         this.group = group;
         this.currentEnv = currentEnv;
+        this.busView = group.viewBuses();
     }
 
     @Override
@@ -33,12 +37,13 @@ public class EventGroupJS implements ProxyObject {
 
     @Override
     public Object getMemberKeys() {
-        return group.buses.keySet().toArray();
+        return busView.keySet().toArray();
     }
 
     @Override
     public boolean hasMember(String key) {
-        return group.buses.containsKey(key);
+        var holder = busView.get(key);
+        return holder != null && holder.canApplyOn(currentEnv);
     }
 
     @Override
