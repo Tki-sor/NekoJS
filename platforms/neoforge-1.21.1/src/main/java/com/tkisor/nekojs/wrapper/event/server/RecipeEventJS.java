@@ -1,0 +1,243 @@
+package com.tkisor.nekojs.wrapper.event.server;
+
+import com.google.gson.*;
+import com.mojang.serialization.JsonOps;
+import com.tkisor.nekojs.NekoJSCommon;
+import com.tkisor.nekojs.api.recipe.RecipeFilter;
+import com.tkisor.nekojs.api.recipe.RecipeJsonBuilder;
+import com.tkisor.nekojs.wrapper.RecipeRegistryProxy;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.crafting.*;
+import graal.graalvm.polyglot.Value;
+
+import java.nio.charset.StandardCharsets;
+import java.util.*;
+
+public class RecipeEventJS {
+
+    private final RecipeRegistryProxy recipesProxy;
+    private final Map<ResourceLocation, JsonElement> jsons;
+    private final HolderLookup.Provider registries;
+    private int recipeCounter = 0;
+
+    public RecipeEventJS(Map<ResourceLocation, JsonElement> originalJsons, HolderLookup.Provider registries) {
+        this.jsons = new HashMap<>(originalJsons);
+        this.registries = registries;
+        this.recipesProxy = new RecipeRegistryProxy(this);
+    }
+
+    public Map<ResourceLocation, JsonElement> getFinalJsons() { return this.jsons; }
+
+    public JsonElement serializeResult(ItemStack stack) {
+        return ItemStack.CODEC.encodeStart(registries.createSerializationContext(JsonOps.INSTANCE), stack).getOrThrow(JsonParseException::new);
+    }
+
+    public JsonElement serializeIngredient(Ingredient ingredient) {
+        return Ingredient.CODEC.encodeStart(registries.createSerializationContext(JsonOps.INSTANCE), ingredient).getOrThrow(JsonParseException::new);
+    }
+
+    public ResourceLocation generateRecipeId(String prefix) {
+        String baseString = prefix + "_" + (recipeCounter++);
+
+        String randomSuffix = UUID.nameUUIDFromBytes(baseString.getBytes(StandardCharsets.UTF_8))
+                .toString().replace("-", "").substring(0, 8);
+
+        return ResourceLocation.fromNamespaceAndPath("nekojs", prefix + "_" + randomSuffix);
+    }
+
+    public void replaceInput(RecipeFilter filter, Ingredient match, Ingredient replacement) {
+        if (match == null || replacement == null) return;
+        JsonElement replacementJson = serializeIngredient(replacement);
+        int replaced = 0;
+        for (Map.Entry<ResourceLocation, JsonElement> entry : jsons.entrySet()) {
+            if (!entry.getValue().isJsonObject()) continue;
+            JsonObject jsonObj = entry.getValue().getAsJsonObject();
+            if (filter != null && !passFilter(entry.getKey(), jsonObj, filter)) continue;
+            if (replaceInputInJson(jsonObj, match, replacementJson)) replaced++;
+        }
+        NekoJSCommon.LOGGER.debug("[NekoJS] Successfully intercepted JSON tree and replaced input ingredients in {} recipes", replaced);
+    }
+
+    private boolean replaceInputInJson(JsonObject recipeJson, Ingredient match, JsonElement replacementJson) {
+        boolean modified = false;
+        if (recipeJson.has("ingredient") && testIngredientNode(recipeJson.get("ingredient"), match)) {
+            recipeJson.add("ingredient", replacementJson);
+            modified = true;
+        }
+        if (recipeJson.has("ingredients")) {
+            JsonArray arr = recipeJson.getAsJsonArray("ingredients");
+            for (int i = 0; i < arr.size(); i++) {
+                if (testIngredientNode(arr.get(i), match)) {
+                    arr.set(i, replacementJson);
+                    modified = true;
+                }
+            }
+        }
+        if (recipeJson.has("key")) {
+            JsonObject keyObj = recipeJson.getAsJsonObject("key");
+            for (String k : keyObj.keySet()) {
+                if (testIngredientNode(keyObj.get(k), match)) {
+                    keyObj.add(k, replacementJson);
+                    modified = true;
+                }
+            }
+        }
+        return modified;
+    }
+
+    private boolean testIngredientNode(JsonElement node, Ingredient match) {
+        try {
+            Ingredient nodeIng = Ingredient.CODEC.parse(registries.createSerializationContext(JsonOps.INSTANCE), node).getOrThrow();
+            List<String> nodeItems = Arrays.stream(nodeIng.getItems()).map(s -> BuiltInRegistries.ITEM.getKey(s.getItem()).toString()).toList();
+            List<String> matchItems = Arrays.stream(match.getItems()).map(s -> BuiltInRegistries.ITEM.getKey(s.getItem()).toString()).toList();
+            return !nodeItems.isEmpty() && nodeItems.size() == matchItems.size() && nodeItems.containsAll(matchItems);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    public void replaceOutput(RecipeFilter filter, Ingredient match, ItemStack replacement) {
+        if (match == null || replacement == null) return;
+        JsonElement replacementJson = serializeResult(replacement);
+        int replaced = 0;
+        for (Map.Entry<ResourceLocation, JsonElement> entry : jsons.entrySet()) {
+            if (!entry.getValue().isJsonObject()) continue;
+            JsonObject jsonObj = entry.getValue().getAsJsonObject();
+            if (filter != null && !passFilter(entry.getKey(), jsonObj, filter)) continue;
+            if (jsonObj.has("result")) {
+                JsonElement resultNode = jsonObj.get("result");
+                try {
+                    ItemStack outputStack = ItemStack.CODEC.parse(registries.createSerializationContext(JsonOps.INSTANCE), resultNode).getOrThrow();
+                    if (!outputStack.isEmpty() && match.test(outputStack)) {
+                        jsonObj.add("result", replacementJson);
+                        replaced++;
+                    }
+                } catch (Exception e) {
+                    if (resultNode.isJsonPrimitive() && resultNode.getAsJsonPrimitive().isString()) {
+                        ResourceLocation loc = ResourceLocation.tryParse(resultNode.getAsString());
+                        if (loc != null) {
+                            Item item = BuiltInRegistries.ITEM.get(loc);
+                            if (item != Items.AIR && match.test(new ItemStack(item))) {
+                                jsonObj.add("result", replacementJson);
+                                replaced++;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        NekoJSCommon.LOGGER.debug("[NekoJS] Successfully intercepted JSON tree and replaced outputs in {} recipes", replaced);
+    }
+
+    public void remove(RecipeFilter filter) {
+        if (filter == null) return;
+        int before = jsons.size();
+        jsons.entrySet().removeIf(entry -> {
+            if (!entry.getValue().isJsonObject()) return false;
+            return passFilter(entry.getKey(), entry.getValue().getAsJsonObject(), filter);
+        });
+        NekoJSCommon.LOGGER.debug("[NekoJS] Removed {} recipes matching the filter", before - jsons.size());
+    }
+
+    private boolean passFilter(ResourceLocation id, JsonObject jsonObj, RecipeFilter filter) {
+        try {
+            Recipe<?> tempRecipe = Recipe.CODEC.parse(registries.createSerializationContext(JsonOps.INSTANCE), jsonObj).getOrThrow();
+            return filter.test(new RecipeHolder<>(id, tempRecipe), registries);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    public RecipeJsonBuilder custom(JsonObject recipeJson) {
+        if (recipeJson == null || !recipeJson.has("type") || !recipeJson.get("type").isJsonPrimitive()) {
+            NekoJSCommon.LOGGER.debug("[NekoJS] Failed to register custom recipe: missing required 'type' field!");
+            return null;
+        }
+        return new RecipeJsonBuilder(this, recipeJson, "custom");
+    }
+
+    public RecipeJsonBuilder shaped(ItemStack result, Value pattern, Value keys) {
+        JsonObject json = new JsonObject();
+        json.addProperty("type", "minecraft:crafting_shaped");
+        JsonArray patternArray = new JsonArray();
+        for (int i = 0; i < pattern.getArraySize(); i++) patternArray.add(pattern.getArrayElement(i).asString());
+        json.add("pattern", patternArray);
+        JsonObject keyObj = new JsonObject();
+        for (String key : keys.getMemberKeys())
+            keyObj.add(key, serializeIngredient(keys.getMember(key).as(Ingredient.class)));
+        json.add("key", keyObj);
+        json.add("result", serializeResult(result));
+        return new RecipeJsonBuilder(this, json, "shaped");
+    }
+
+    public RecipeJsonBuilder shapeless(ItemStack result, List<Ingredient> ingredients) {
+        JsonObject json = new JsonObject();
+        json.addProperty("type", "minecraft:crafting_shapeless");
+        JsonArray ingredientsArray = new JsonArray();
+        if (ingredients != null) for (Ingredient ing : ingredients) ingredientsArray.add(serializeIngredient(ing));
+        json.add("ingredients", ingredientsArray);
+        json.add("result", serializeResult(result));
+        return new RecipeJsonBuilder(this, json, "shapeless");
+    }
+
+    private RecipeJsonBuilder createCookingRecipe(String type, ItemStack result, Ingredient ingredient, float xp, int cookTime, String prefix) {
+        JsonObject json = new JsonObject();
+        json.addProperty("type", type);
+        json.add("ingredient", serializeIngredient(ingredient));
+        json.add("result", serializeResult(result));
+        json.addProperty("experience", xp);
+        json.addProperty("cookingtime", cookTime);
+        return new RecipeJsonBuilder(this, json, prefix);
+    }
+
+    public RecipeJsonBuilder smelting(ItemStack result, Ingredient ingredient) {
+        return createCookingRecipe("minecraft:smelting", result, ingredient, 0.1f, 200, "smelting");
+    }
+
+    public RecipeJsonBuilder smelting(ItemStack result, Ingredient ingredient, float xp, int cookTime) {
+        return createCookingRecipe("minecraft:smelting", result, ingredient, xp, cookTime, "smelting");
+    }
+
+    public RecipeJsonBuilder blasting(ItemStack result, Ingredient ingredient) {
+        return createCookingRecipe("minecraft:blasting", result, ingredient, 0.1f, 100, "blasting");
+    }
+
+    public RecipeJsonBuilder blasting(ItemStack result, Ingredient ingredient, float xp, int cookTime) {
+        return createCookingRecipe("minecraft:blasting", result, ingredient, xp, cookTime, "blasting");
+    }
+
+    public RecipeJsonBuilder smoking(ItemStack result, Ingredient ingredient) {
+        return createCookingRecipe("minecraft:smoking", result, ingredient, 0.1f, 100, "smoking");
+    }
+
+    public RecipeJsonBuilder campfireCooking(ItemStack result, Ingredient ingredient) {
+        return createCookingRecipe("minecraft:campfire_cooking", result, ingredient, 0.1f, 600, "campfire");
+    }
+
+    public static String getRecipeOutputId(Recipe<?> recipe, HolderLookup.Provider registries) {
+        if (recipe instanceof ShapedRecipe shaped) return BuiltInRegistries.ITEM.getKey(shaped.getResultItem(registries).getItem()).toString();
+        if (recipe instanceof ShapelessRecipe shapeless) return BuiltInRegistries.ITEM.getKey(shapeless.getResultItem(registries).getItem()).toString();
+        if (recipe instanceof SingleItemRecipe single) return BuiltInRegistries.ITEM.getKey(single.getResultItem(registries).getItem()).toString();
+        if (recipe instanceof AbstractCookingRecipe cooking) return BuiltInRegistries.ITEM.getKey(cooking.getResultItem(registries).getItem()).toString();
+        return null;
+    }
+
+    public static List<Ingredient> getIngredients(Recipe<?> recipe) {
+        // 1.21.1 原版的 Recipe 接口本身就有 getIngredients 方法，所有配方均适用。
+        return recipe.getIngredients();
+    }
+
+    public RecipeRegistryProxy getRecipes() {
+        return this.recipesProxy;
+    }
+
+    public RecipeJsonBuilder builder(String type) {
+        String prefix = type.contains(":") ? type.split(":")[1] : "custom";
+        return new RecipeJsonBuilder(this, type, prefix);
+    }
+}

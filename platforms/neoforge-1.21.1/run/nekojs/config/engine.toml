@@ -1,0 +1,6 @@
+# Allows scripts to create unmanaged background threads. May cause lag or resource leaks.
+allowThreads = false
+# Allows scripts to bypass access controls via reflection and modify private Java data.
+allowReflection = false
+# Allows scripts to directly manipulate Java bytecode. Incorrect usage may cause severe crashes.
+allowAsm = false

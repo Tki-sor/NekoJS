@@ -1,0 +1,26 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.tkisor.nekojs.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "RecipeManagerMixin",
+    "ReloadableServerResourcesMixin",
+    "inject.MixinBlock",
+    "inject.MixinBlockState",
+    "inject.MixinEntity",
+    "inject.MixinItemStack",
+    "inject.MixinLevel",
+    "inject.MixinLivingEntity",
+    "inject.MixinMutableComponent",
+    "inject.MixinPlayer"
+  ],
+  "client": [
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "overwrites": {
+    "requireAnnotations": true
+  }
+}

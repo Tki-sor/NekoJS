@@ -1,0 +1,32 @@
+plugins {
+    id 'java'
+}
+
+group = 'com.tkisor'
+version = '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+    repositories {
+        exclusiveContent {
+            forRepository {
+                maven {
+                    url "https://cursemaven.com"
+                }
+            }
+            filter {
+                includeGroup "curse.maven"
+            }
+        }
+    }
+}
+
+dependencies {
+    testImplementation platform('org.junit:junit-bom:6.0.0')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+test {
+    useJUnitPlatform()
+}

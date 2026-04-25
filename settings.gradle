@@ -1,0 +1,19 @@
+pluginManagement {
+    repositories {
+        mavenLocal()
+        gradlePluginPortal()
+        maven { url = 'https://maven.neoforged.net/releases' }
+        maven { url "https://maven.creeperhost.net/" }
+    }
+}
+
+plugins {
+    id 'org.gradle.toolchains.foojay-resolver-convention' version '1.0.0'
+}
+
+rootProject.name = 'NekoJS'
+include 'common'
+
+// 嵌套在 platforms 文件夹里的模块，用冒号分隔
+include 'platforms:neoforge-26.1'
+include 'platforms:neoforge-1.21.1'

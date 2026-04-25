@@ -1,0 +1,27 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "CommonJS",
+    "moduleDetection": "force",
+    "moduleResolution": "node",
+    "lib": [
+      "ESNext"
+    ],
+    "allowJs": true,
+    "checkJs": false,
+    "skipLibCheck": true,
+    "baseUrl": "../../.probe/client/probe-types",
+    "typeRoots": [
+      "../../.probe/client/probe-types",
+      "../node_modules/@types"
+    ],
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "experimentalDecorators": true,
+    "strict": true
+  },
+  "include": [
+    "./**/*.js",
+    "./**/*.ts"
+  ]
+}
