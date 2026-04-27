@@ -41,7 +41,9 @@ public class NekoCodeEditor {
     private boolean isDirty = false;
     private final int GUTTER_WIDTH = 32;
 
-    private record HistoryState(String text, int cursor, double scroll) {}
+    private record HistoryState(String text, int cursor, double scroll) {
+    }
+
     private final Deque<HistoryState> undoStack = new ArrayDeque<>();
     private final Deque<HistoryState> redoStack = new ArrayDeque<>();
     private boolean isRestoringHistory = false;
@@ -126,41 +128,15 @@ public class NekoCodeEditor {
     // 强烈建议你之后用 Access Transformer 或 Mixin Accessor 替换这些方法以提高性能
     // ==========================================
     private MultilineTextField getTextFieldFromBox() {
-        try {
-            // 在原版或常见反编译映射中，字段可能被混淆，通常需要 AT 开放权限。
-            // 假设你已经通过 AT 开放了 textField 权限：
-            // return this.editorBox.textField;
-
-            // 如果你暂时没有配置 AT，使用反射强制获取：
-            java.lang.reflect.Field field = MultiLineEditBox.class.getDeclaredField("textField"); // 注意：混淆环境下字段名可能不是 textField
-            field.setAccessible(true);
-            return (MultilineTextField) field.get(this.editorBox);
-        } catch (Exception e) {
-            System.err.println("NekoCodeEditor: Failed to access textField.");
-            return null;
-        }
+        return this.editorBox.textField;
     }
 
     private double getScrollAmountSafely() {
-        try {
-            // 如果配置了 AT: return this.editorBox.scrollAmount();
-            java.lang.reflect.Method method = net.minecraft.client.gui.components.AbstractScrollWidget.class.getDeclaredMethod("scrollAmount");
-            method.setAccessible(true);
-            return (double) method.invoke(this.editorBox);
-        } catch (Exception e) {
-            return 0.0;
-        }
+        return this.editorBox.scrollAmount();
     }
 
     private void setScrollAmountSafely(double amount) {
-        try {
-            // 如果配置了 AT: this.editorBox.setScrollAmount(amount);
-            java.lang.reflect.Method method = net.minecraft.client.gui.components.AbstractScrollWidget.class.getDeclaredMethod("setScrollAmount", double.class);
-            method.setAccessible(true);
-            method.invoke(this.editorBox, amount);
-        } catch (Exception e) {
-            // ignore
-        }
+        this.editorBox.setScrollAmount(amount);
     }
 
     private int getCursorSafely() {
@@ -202,21 +178,52 @@ public class NekoCodeEditor {
         }
     }
 
-    public MultiLineEditBox getWidget() { return this.editorBox; }
-    public String getValue() { return this.editorBox.getValue(); }
-    public boolean isDirty() { return this.isDirty; }
+    public MultiLineEditBox getWidget() {
+        return this.editorBox;
+    }
+
+    public String getValue() {
+        return this.editorBox.getValue();
+    }
+
+    public boolean isDirty() {
+        return this.isDirty;
+    }
 
     public void markSaved() {
         this.originalScriptText = this.editorBox.getValue();
         this.isDirty = false;
     }
 
-    public String getOriginalScriptText() { return this.originalScriptText; }
+    public String getOriginalScriptText() {
+        return this.originalScriptText;
+    }
 
     public void setOriginalScriptText(String text) {
         this.originalScriptText = text;
         this.isDirty = !this.getValue().equals(text);
         this.updateDocumentWords(text);
+    }
+
+    /**
+     * 从外部（网络同步、文件加载等）设置编辑器内容
+     * 会正确保存当前 undo 历史、更新所有内部状态
+     */
+    public void setContentFromExternal(String newText) {
+        pushCurrentState();
+        isRestoringHistory = true;
+        editorBox.setValue(newText);
+        isRestoringHistory = false;
+        lastText = newText;
+        lastCursor = 0;
+        lastScroll = 0;
+        setCursorAbsolute(0);
+        setScrollAmountSafely(0);
+        this.isDirty = !newText.equals(this.originalScriptText);
+        updateLineMap();
+        updateDocumentWords(newText);
+        findMatchingBrackets();
+        showAutoComplete = false;
     }
 
     public void setHighlightAndScroll(int start, int end) {
@@ -234,7 +241,9 @@ public class NekoCodeEditor {
         setScrollAmountSafely(Math.max(0, targetScroll));
     }
 
-    private void setCursorAbsolute(int pos) { setSelection(pos, pos); }
+    private void setCursorAbsolute(int pos) {
+        setSelection(pos, pos);
+    }
 
     public void setSelection(int cursor, int selectCursor) {
         int len = this.editorBox.getValue().length();
@@ -340,7 +349,8 @@ public class NekoCodeEditor {
             return true;
         }
         if (isCtrlDown() && key == GLFW.GLFW_KEY_Z) {
-            if (isShiftDown()) redo(); else undo();
+            if (isShiftDown()) redo();
+            else undo();
             return true;
         }
         if (isCtrlDown() && key == GLFW.GLFW_KEY_Y) {
@@ -348,9 +358,15 @@ public class NekoCodeEditor {
             return true;
         }
 
-        if (isCtrlDown() && key == GLFW.GLFW_KEY_SLASH) { return handleToggleComment(); }
-        if (isCtrlDown() && key == GLFW.GLFW_KEY_LEFT_BRACKET) { return handleIndent(true); }
-        if (isCtrlDown() && key == GLFW.GLFW_KEY_RIGHT_BRACKET) { return handleIndent(false); }
+        if (isCtrlDown() && key == GLFW.GLFW_KEY_SLASH) {
+            return handleToggleComment();
+        }
+        if (isCtrlDown() && key == GLFW.GLFW_KEY_LEFT_BRACKET) {
+            return handleIndent(true);
+        }
+        if (isCtrlDown() && key == GLFW.GLFW_KEY_RIGHT_BRACKET) {
+            return handleIndent(false);
+        }
 
         if (key == GLFW.GLFW_KEY_TAB) {
             int c1 = getCursorSafely();
@@ -528,7 +544,8 @@ public class NekoCodeEditor {
 
             if (unindent) {
                 int spacesToRemove = 0;
-                while (spacesToRemove < 4 && spacesToRemove < line.length() && line.charAt(spacesToRemove) == ' ') spacesToRemove++;
+                while (spacesToRemove < 4 && spacesToRemove < line.length() && line.charAt(spacesToRemove) == ' ')
+                    spacesToRemove++;
                 if (spacesToRemove > 0) {
                     newLine = line.substring(spacesToRemove);
                     diff = -spacesToRemove;
@@ -592,7 +609,8 @@ public class NekoCodeEditor {
         for (String line : lines) {
             if (line.trim().isEmpty()) continue;
             if (!line.trim().startsWith("//")) {
-                allCommented = false; break;
+                allCommented = false;
+                break;
             }
         }
 
@@ -914,24 +932,35 @@ public class NekoCodeEditor {
         char open, close;
         int dir;
         if (c == '{' || c == '[' || c == '(') {
-            open = c; close = getClose(c); dir = 1;
+            open = c;
+            close = getClose(c);
+            dir = 1;
         } else {
-            close = c; open = getOpen(c); dir = -1;
+            close = c;
+            open = getOpen(c);
+            dir = -1;
         }
 
         int depth = 0;
         for (int i = start; i >= 0 && i < text.length(); i += dir) {
             char cur = text.charAt(i);
             if (dir == 1) {
-                if (cur == open) depth++; else if (cur == close) depth--;
+                if (cur == open) depth++;
+                else if (cur == close) depth--;
             } else {
-                if (cur == close) depth++; else if (cur == open) depth--;
+                if (cur == close) depth++;
+                else if (cur == open) depth--;
             }
             if (depth == 0) return i;
         }
         return -1;
     }
 
-    private char getClose(char c) { return c == '{' ? '}' : (c == '[' ? ']' : ')'); }
-    private char getOpen(char c) { return c == '}' ? '{' : (c == ']' ? '[' : '('); }
+    private char getClose(char c) {
+        return c == '{' ? '}' : (c == '[' ? ']' : ')');
+    }
+
+    private char getOpen(char c) {
+        return c == '}' ? '{' : (c == ']' ? '[' : '(');
+    }
 }

@@ -232,12 +232,18 @@ public class NekoErrorDashboardScreen extends Screen {
         } catch (Exception e) { toast.show(I18n.get("nekojs.gui.toast.save_fail", e.getMessage())); }
     }
 
-    public void loadServerScript(String content) {
-        if (isEditing && tabbedEditor != null && tabbedEditor.getActiveTab() != null) {
-            tabbedEditor.getActiveTab().editor.getWidget().setValue(content);
-            tabbedEditor.getActiveTab().editor.markSaved();
-            this.toast.show(I18n.get("nekojs.gui.toast.pull_success"));
-        }
+    /**
+     * 从网络同步拉取脚本内容
+     * @param path 脚本路径，用于校验是否匹配当前激活的 Tab
+     * @param content 脚本文本内容
+     */
+    public void loadServerScript(String path, String content) {
+        if (!isEditing || tabbedEditor == null || tabbedEditor.getActiveTab() == null) return;
+        if (!tabbedEditor.getActiveTab().path.equals(path)) return;
+
+        tabbedEditor.getActiveTab().editor.setContentFromExternal(content);
+        tabbedEditor.getActiveTab().editor.markSaved();
+        this.toast.show(I18n.get("nekojs.gui.toast.pull_success"));
     }
 
     private void actionSyncUploadCurrent() {
@@ -337,7 +343,8 @@ public class NekoErrorDashboardScreen extends Screen {
         super.render(graphics, blockEditorHover ? -999 : mouseX, blockEditorHover ? -999 : mouseY, partialTick);
         renderHeaderButtons(graphics, mouseX, mouseY);
 
-        int decorColor = isEditing ? (tabbedEditor.getActiveTab().editor.isDirty() ? 0xFFFFDD00 : 0xFF44FF44) : (selectedError != null ? judgeErrorType(selectedError).color : 0xFF333333);
+        boolean isDirty = isEditing && tabbedEditor != null && tabbedEditor.getActiveTab() != null && tabbedEditor.getActiveTab().editor.isDirty();
+        int decorColor = isDirty ? 0xFFFFDD00 : (isEditing ? 0xFF44FF44 : (selectedError != null ? judgeErrorType(selectedError).color : 0xFF333333));
         graphics.fill(layoutRightX, layoutContentY, layoutRightX + 2, layoutContentY + layoutContentH, decorColor);
         graphics.fill(layoutRightX, layoutContentY, layoutRightX + layoutRightW, layoutContentY + 1, 0xFF333333);
         graphics.fill(layoutRightX, layoutContentY + layoutContentH - 1, layoutRightX + layoutRightW, layoutContentY + layoutContentH, 0xFF333333);
@@ -372,7 +379,7 @@ public class NekoErrorDashboardScreen extends Screen {
         if (isEditing) {
             handleHeaderButton(g, Component.translatable("nekojs.gui.dashboard.btn.exit_edit"), curX, mx, my, false);
             curX -= this.font.width(I18n.get("nekojs.gui.dashboard.btn.exit_edit")) + 5;
-            boolean isDirty = tabbedEditor.getActiveTab().editor.isDirty();
+            boolean isDirty = tabbedEditor != null && tabbedEditor.getActiveTab() != null && tabbedEditor.getActiveTab().editor.isDirty();
             handleHeaderButton(g, Component.translatable(isDirty ? "nekojs.gui.dashboard.btn.save_dirty" : "nekojs.gui.dashboard.btn.save"), curX, mx, my, false);
         } else {
             handleHeaderButton(g, Component.translatable("nekojs.gui.dashboard.btn.copy"), curX, mx, my, false);
@@ -422,7 +429,8 @@ public class NekoErrorDashboardScreen extends Screen {
                     this.isEditing = false; buildDashboardLayout(); return true;
                 }
                 curX -= this.font.width(I18n.get("nekojs.gui.dashboard.btn.exit_edit")) + 5;
-                if (handleHeaderButton(null, Component.translatable(tabbedEditor.getActiveTab().editor.isDirty() ? "nekojs.gui.dashboard.btn.save_dirty" : "nekojs.gui.dashboard.btn.save"), curX, (int)mouseX, (int)mouseY, true)) {
+                boolean isDirtyEdit = tabbedEditor != null && tabbedEditor.getActiveTab() != null && tabbedEditor.getActiveTab().editor.isDirty();
+                if (handleHeaderButton(null, Component.translatable(isDirtyEdit ? "nekojs.gui.dashboard.btn.save_dirty" : "nekojs.gui.dashboard.btn.save"), curX, (int)mouseX, (int)mouseY, true)) {
                     actionSaveActiveTab(); return true;
                 }
             } else {
@@ -447,6 +455,45 @@ public class NekoErrorDashboardScreen extends Screen {
             }
         }
         return super.mouseClicked(mouseX, mouseY, button);
+    }
+
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        if (modal.isOpen() || activeContextMenu != null) return true;
+        if (this.isEditing && tabbedEditor != null) {
+            if (tabbedEditor.mouseScrolled(mouseX, mouseY, scrollX, scrollY)) return true;
+        }
+        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
+    }
+
+    @Override
+    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (modal.isOpen()) {
+            if (modal.keyPressed(keyCode, scanCode, modifiers)) return true;
+            return super.keyPressed(keyCode, scanCode, modifiers);
+        }
+        if (this.activeContextMenu != null && keyCode == GLFW.GLFW_KEY_ESCAPE) {
+            this.activeContextMenu = null; return true;
+        }
+        if (this.isEditing && tabbedEditor != null) {
+            if (tabbedEditor.keyPressed(keyCode, scanCode, modifiers)) return true;
+            if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
+                this.isEditing = false;
+                this.buildDashboardLayout();
+                return true;
+            }
+        }
+        return super.keyPressed(keyCode, scanCode, modifiers);
+    }
+
+    @Override
+    public boolean charTyped(char codePoint, int modifiers) {
+        if (modal.isOpen()) return super.charTyped(codePoint, modifiers);
+        if (this.activeContextMenu != null) return false;
+        if (this.isEditing && tabbedEditor != null) {
+            if (tabbedEditor.charTyped(codePoint)) return true;
+        }
+        return super.charTyped(codePoint, modifiers);
     }
 
     private class ErrorListWidget extends ObjectSelectionList<ErrorEntry> {

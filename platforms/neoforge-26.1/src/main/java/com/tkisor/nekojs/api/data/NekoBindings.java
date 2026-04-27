@@ -12,7 +12,7 @@ public final class NekoBindings {
     private static final List<Binding> RAW_BINDINGS = new ArrayList<>();
 
     private static final ScriptTypedValue<Map<String, Binding>> ENVIRONMENT_BINDINGS =
-            ScriptTypedValue.of(ScriptType.values(), type -> new LinkedHashMap<>());
+            ScriptTypedValue.of(type -> new LinkedHashMap<>());
 
     private static boolean initialized = false;
 
@@ -57,15 +57,15 @@ public final class NekoBindings {
     private static void initialize() {
         var plugins = NekoJSPluginManager.getPlugins();
 
-        plugins.forEach(plugin -> plugin.registerBindings(binding -> register((Binding) binding)));
+        plugins.forEach(plugin -> plugin.registerBindings(NekoBindings::register));
 
         if (FMLEnvironment.getDist() == Dist.CLIENT) {
-            plugins.forEach(plugin -> plugin.registerClientBindings(binding -> register((Binding) binding)));
+            plugins.forEach(plugin -> plugin.registerClientBindings(NekoBindings::register));
         }
 
         for (Binding binding : RAW_BINDINGS) {
             for (ScriptType envType : ScriptType.all()) {
-                if (binding.canApplyOn(envType) || binding.scriptType() == ScriptType.COMMON) {
+                if (binding.canApplyOn(envType)) {
                     ENVIRONMENT_BINDINGS.at(envType).put(binding.getName(), binding);
                 }
             }

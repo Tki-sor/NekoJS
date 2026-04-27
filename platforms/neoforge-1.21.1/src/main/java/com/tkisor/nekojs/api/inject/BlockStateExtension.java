@@ -25,6 +25,6 @@ public interface BlockStateExtension {
 //    }
 
     default String neko$getId() {
-        return self().getBlock().neko$getId();
+        return ((BlockExtension) self().getBlock()).neko$getId();
     }
 }

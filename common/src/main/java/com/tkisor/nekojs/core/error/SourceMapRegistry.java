@@ -7,6 +7,13 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+/**
+ * VLQ SourceMap 映射注册表。
+ * <p>
+ * 纯算法类，负责解析 SourceMap JSON 中的 VLQ 编码映射，
+ * 将编译后 JavaScript 的行列号映射回原始 TypeScript 源码位置。
+ * </p>
+ */
 public class SourceMapRegistry {
 
     private static final Pattern MAPPINGS_PATTERN = Pattern.compile("\"mappings\"\\s*:\\s*\"([^\"]+)\"");
@@ -14,8 +21,12 @@ public class SourceMapRegistry {
 
     private static final Map<String, ScriptMapping> MAPPINGS_MAP = new ConcurrentHashMap<>();
 
+    /**
+     * 注册 SourceMap（传入完整的 sourceMapJson）
+     */
     public static void register(String scriptPath, String sourceMapJson) {
         if (sourceMapJson == null || sourceMapJson.isEmpty() || scriptPath == null) return;
+
         try {
             String mappings = "";
             Matcher mapMatcher = MAPPINGS_PATTERN.matcher(sourceMapJson);
@@ -47,6 +58,7 @@ public class SourceMapRegistry {
     private static ScriptMapping parseMappings(String mappings, String[] names) {
         String[] jsLines = mappings.split(";", -1);
         List<List<MappingEntry>> lineMappings = new ArrayList<>(jsLines.length);
+
         int sourceLine = 0;
         int sourceColumn = 0;
         int nameIndex = 0;
@@ -54,16 +66,21 @@ public class SourceMapRegistry {
         for (String jsLineStr : jsLines) {
             List<MappingEntry> currentLineEntries = new ArrayList<>();
             lineMappings.add(currentLineEntries);
+
             if (jsLineStr.isEmpty()) continue;
+
             int jsColumn = 0;
             String[] segments = jsLineStr.split(",");
             for (String segment : segments) {
                 if (segment.isEmpty()) continue;
                 List<Integer> vals = decodeVlq(segment);
+
                 jsColumn += vals.get(0);
+
                 if (vals.size() >= 4) {
                     sourceLine += vals.get(2);
                     sourceColumn += vals.get(3);
+
                     String symbolName = null;
                     if (vals.size() >= 5) {
                         nameIndex += vals.get(4);
@@ -78,11 +95,20 @@ public class SourceMapRegistry {
         return new ScriptMapping(lineMappings);
     }
 
+    /**
+     * 获取映射信息（需要传入 JS 报错的行号和列号）
+     *
+     * @param jsLine   1-based
+     * @param jsColumn 1-based
+     * @return 返回原始位置信息，如果没找到则返回带原始请求的兜底对象
+     */
     public static OriginalPosition getMappedPosition(String scriptPath, int jsLine, int jsColumn) {
         OriginalPosition fallback = new OriginalPosition(jsLine, jsColumn, null);
         if (scriptPath == null || MAPPINGS_MAP.isEmpty()) return fallback;
+
         String query = scriptPath.replace('\\', '/');
         ScriptMapping mapping = MAPPINGS_MAP.get(query);
+
         if (mapping == null) {
             for (Map.Entry<String, ScriptMapping> entry : MAPPINGS_MAP.entrySet()) {
                 if (entry.getKey().endsWith(query) || query.endsWith(entry.getKey())) {
@@ -91,13 +117,16 @@ public class SourceMapRegistry {
                 }
             }
         }
+
         if (mapping != null) {
             int lineIndex = jsLine - 1;
             if (lineIndex >= 0 && lineIndex < mapping.lineMappings.size()) {
                 List<MappingEntry> entries = mapping.lineMappings.get(lineIndex);
                 if (entries == null || entries.isEmpty()) return fallback;
+
                 int targetCol = jsColumn - 1;
                 MappingEntry bestMatch = entries.get(0);
+
                 for (MappingEntry entry : entries) {
                     if (entry.jsColumn <= targetCol) {
                         bestMatch = entry;
@@ -111,11 +140,17 @@ public class SourceMapRegistry {
         return fallback;
     }
 
-    public static void clearByPrefix(String prefix) {
-        if (prefix == null) return;
-        MAPPINGS_MAP.keySet().removeIf(path -> path.toLowerCase().contains(prefix.toLowerCase()));
+    /**
+     * 根据路径前缀清除映射（用于按脚本类型批量清除）。
+     * 平台层通过 {@code SourceMapRegistryPlatformBridge.clearByType} 桥接调用。
+     */
+    public static void clearByPathPrefix(String pathPrefix) {
+        if (pathPrefix == null) return;
+        String lower = pathPrefix.toLowerCase();
+        MAPPINGS_MAP.keySet().removeIf(path -> path.toLowerCase().contains(lower));
     }
 
+    // VLQ Base64 解码器
     private static List<Integer> decodeVlq(String str) {
         List<Integer> result = new ArrayList<>();
         int value = 0, shift = 0;
@@ -137,21 +172,37 @@ public class SourceMapRegistry {
 
     private static class ScriptMapping {
         final List<List<MappingEntry>> lineMappings;
-        ScriptMapping(List<List<MappingEntry>> lineMappings) { this.lineMappings = lineMappings; }
+
+        ScriptMapping(List<List<MappingEntry>> lineMappings) {
+            this.lineMappings = lineMappings;
+        }
     }
 
     private static class MappingEntry {
-        final int jsColumn; final int tsLine; final int tsColumn; final String name;
+        final int jsColumn;
+        final int tsLine;
+        final int tsColumn;
+        final String name;
+
         MappingEntry(int jsColumn, int tsLine, int tsColumn, String name) {
-            this.jsColumn = jsColumn; this.tsLine = tsLine; this.tsColumn = tsColumn; this.name = name;
+            this.jsColumn = jsColumn;
+            this.tsLine = tsLine;
+            this.tsColumn = tsColumn;
+            this.name = name;
         }
     }
 
     public static class OriginalPosition {
-        public final int line; public final int column; public final String name;
+        public final int line;
+        public final int column;
+        public final String name;
+
         public OriginalPosition(int line, int column, String name) {
-            this.line = line; this.column = column; this.name = name;
+            this.line = line;
+            this.column = column;
+            this.name = name;
         }
+
         @Override
         public String toString() {
             if (name != null) return name + " (" + line + ":" + column + ")";

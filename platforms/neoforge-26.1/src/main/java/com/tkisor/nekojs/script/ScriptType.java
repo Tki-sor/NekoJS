@@ -19,7 +19,7 @@ public enum ScriptType {
 
     private static class LoggerHolder {
         private static final ScriptTypedValue<Logger> LOGGERS =
-                ScriptTypedValue.of(ScriptType.values(), type -> NekoJSLoggers.createLogger(((ScriptType) type).name));
+                ScriptTypedValue.of(type -> NekoJSLoggers.createLogger(type.name));
     }
 
     public final String name;

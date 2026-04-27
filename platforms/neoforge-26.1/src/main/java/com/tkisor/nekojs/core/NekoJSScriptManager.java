@@ -24,8 +24,9 @@ import java.util.*;
  */
 public final class NekoJSScriptManager {
 
-    private final ScriptTypedValue<Context> contexts = ScriptTypedValue.ofNullable(ScriptType.values(), this::initContext);
-        private final ScriptTypedValue<List<ScriptContainer>> scripts = ScriptTypedValue.of(ScriptType.values(), type -> new ArrayList<>());
+    private final ScriptTypedValue<Context> contexts = ScriptTypedValue.ofNullable(this::initContext);
+
+    private final ScriptTypedValue<List<ScriptContainer>> scripts = ScriptTypedValue.of(type -> new ArrayList<>());
 
     private final ScriptPropertyRegistry scriptPropertyRegistry = new ScriptPropertyRegistry.Impl();
 

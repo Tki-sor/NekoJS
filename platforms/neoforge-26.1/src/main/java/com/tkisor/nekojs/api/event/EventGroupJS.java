@@ -43,7 +43,7 @@ public class EventGroupJS implements ProxyObject {
     @Override
     public boolean hasMember(String key) {
         var holder = busView.get(key);
-        return holder != null && (holder.canApplyOn(currentEnv) || holder.scriptType() == ScriptType.COMMON);
+        return holder != null && holder.canApplyOn(currentEnv);
     }
 
     @Override

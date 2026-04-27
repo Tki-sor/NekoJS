@@ -1,3 +1,0 @@
-/nekojs editor
-/nekojs error
-/reload

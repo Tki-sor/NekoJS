@@ -1,7 +1,7 @@
 package com.tkisor.nekojs.api.data;
 
 import com.tkisor.nekojs.api.JSTypeAdapter;
-import com.tkisor.nekojs.core.NekoJSPluginManager;
+import com.tkisor.nekojs.core.NekoJSBasePluginManager;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -26,7 +26,7 @@ public class NekoJSTypeAdapters {
     }
 
     private static void initialize() {
-        NekoJSPluginManager.getPlugins().forEach(plugin -> plugin.registerAdapters(NekoJSTypeAdapters::register));
+        NekoJSBasePluginManager.getPlugins().forEach(plugin -> plugin.registerAdapters(NekoJSTypeAdapters::register));
         initialized = true;
     }
 }

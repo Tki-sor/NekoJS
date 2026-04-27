@@ -55,9 +55,9 @@ neoForge {
 
     accessTransformers = project.files('src/main/resources/META-INF/accesstransformer.cfg')
 
-    interfaceInjectionData {
-        it.from(project.files('src/main/resources/nekojs.interface_injection.json'))
-    }
+//    interfaceInjectionData {
+//        it.from(project.files('src/main/resources/nekojs.interface_injection.json'))
+//    }
 
     runs {
         client {

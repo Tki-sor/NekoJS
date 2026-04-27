@@ -5,7 +5,15 @@
   "compatibilityLevel": "JAVA_21",
   "mixins": [
     "RecipeManagerMixin",
-    "ReloadableServerResourcesMixin"
+    "ReloadableServerResourcesMixin",
+    "inject.MixinBlock",
+    "inject.MixinBlockState",
+    "inject.MixinEntity",
+    "inject.MixinItemStack",
+    "inject.MixinLevel",
+    "inject.MixinLivingEntity",
+    "inject.MixinMutableComponent",
+    "inject.MixinPlayer"
   ],
   "client": [
   ],

@@ -75,7 +75,7 @@ public class NekoJSNetwork {
     }
 
     private static void handleFetchResponseOnClient(FetchScriptResponsePacket data, IPayloadContext context) {
-        context.enqueueWork(() -> ClientHandler.receiveServerScript(data.content()));
+        context.enqueueWork(() -> ClientHandler.receiveServerScript(data.path(), data.content()));
     }
 
     private static void handleSyncFeedbackOnClient(SyncFeedbackPacket data, IPayloadContext context) {
@@ -95,9 +95,9 @@ public class NekoJSNetwork {
             Minecraft.getInstance().setScreen(new NekoErrorDashboardScreen(errors));
         }
 
-        private static void receiveServerScript(String content) {
+        private static void receiveServerScript(String path, String content) {
             if (Minecraft.getInstance().screen instanceof NekoErrorDashboardScreen screen) {
-                screen.loadServerScript(content);
+                screen.loadServerScript(path, content);
             }
         }
 

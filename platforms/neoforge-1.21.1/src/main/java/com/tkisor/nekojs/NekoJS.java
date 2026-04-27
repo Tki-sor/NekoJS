@@ -9,7 +9,6 @@ import com.tkisor.nekojs.command.NekoJSCommands;
 import com.tkisor.nekojs.core.NekoJSMemberRemapper;
 import com.tkisor.nekojs.core.NekoJSScriptManager;
 import com.tkisor.nekojs.core.fs.NekoJSPaths;
-import com.tkisor.nekojs.core.log.NekoJSLoggers;
 import com.tkisor.nekojs.js.type_adapter.*;
 import com.tkisor.nekojs.script.ScriptBootstrap;
 import com.tkisor.nekojs.script.ScriptType;
@@ -41,9 +40,6 @@ public class NekoJS extends NekoJSCommon {
 
     public NekoJS(IEventBus modEventBus, ModContainer modContainer) {
         MemberRemapper.GLOBAL.set(new NekoJSMemberRemapper());
-
-        // 初始化日志系统
-        NekoJSLoggers.init(org.slf4j.LoggerFactory.getLogger("NekoJS"), net.neoforged.fml.loading.FMLPaths.GAMEDIR.get());
 
         NekoJS.modEventBus = modEventBus;
 

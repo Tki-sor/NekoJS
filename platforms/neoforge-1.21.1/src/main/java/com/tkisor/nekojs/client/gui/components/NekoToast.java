@@ -9,7 +9,8 @@ public class NekoToast {
     private long expiryTime = 0;
 
     public void show(String msg) {
-        this.message = msg;
+        // 1.21.1: 剥离 § 格式码，Minecraft 原生字体无法渲染
+        this.message = msg.replaceAll("§[a-f0-8k-o]", "");
         this.expiryTime = System.currentTimeMillis() + 2000;
     }
 

@@ -93,7 +93,7 @@ public class EventGroup {
         for (var entry : buses.entrySet()) {
             var registered = entry.getValue();
 
-            if (registered.canApplyOn(type) || registered.scriptType() == ScriptType.COMMON) {
+            if (registered.canApplyOn(type)) {
                 clearBus(registered.bus);
             }
         }
@@ -115,7 +115,7 @@ public class EventGroup {
 
         @Override
         public EventBusJS<?, ?> getBus(ScriptType targetEnv) {
-            return (canApplyOn(targetEnv) || scriptType() == ScriptType.COMMON) ? bus : null;
+            return canApplyOn(targetEnv) ? bus : null;
         }
     }
 }

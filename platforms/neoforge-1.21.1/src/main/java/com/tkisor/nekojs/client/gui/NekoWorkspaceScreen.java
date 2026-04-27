@@ -11,7 +11,6 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.client.resources.language.I18n;
 import net.minecraft.util.Mth;
-import net.minecraft.Util;
 import org.lwjgl.glfw.GLFW;
 
 import java.io.File;
@@ -313,7 +312,7 @@ public class NekoWorkspaceScreen extends Screen {
             if (matchCount > 0) {
                 String[] parts = path.split("/");
                 String fileName = parts[parts.length - 1];
-                fileNode.name = fileName + " (" + matchCount + ")  §8" + getParentDir(path);
+                fileNode.name = fileName + " (" + matchCount + ")  [" + getParentDir(path) + "]";
                 searchRoot.children.add(fileNode);
             }
         }
@@ -341,7 +340,7 @@ public class NekoWorkspaceScreen extends Screen {
 
     private void addNodesToWidget(FileNode node) {
         if (node != treeRoot && node != searchRoot) {
-            fileListWidget.addEntry(new FileEntry(node, false));
+            fileListWidget.addEntry(new FileEntry(node));
             int indent = node.depth * 10 + 4;
             int width = indent + 20 + this.font.width(node.name);
             maxListContentWidth = Math.max(maxListContentWidth, width);
@@ -466,34 +465,61 @@ public class NekoWorkspaceScreen extends Screen {
         } catch (Exception e) { toast.show(I18n.get("nekojs.gui.toast.error.read_fail", e.getMessage())); }
     }
 
-    public void onSyncFeedback(boolean success, String message) { String prefix = success ? "§a✔ " : "§c✖ "; this.toast.show(prefix + message); if (success && tabbedEditor != null && tabbedEditor.getActiveTab() != null) { tabbedEditor.getActiveTab().editor.markSaved(); } }
+    public void onSyncFeedback(boolean success, String message) { String prefix = success ? "[OK] " : "[ERR] "; this.toast.show(prefix + message); if (success && tabbedEditor != null && tabbedEditor.getActiveTab() != null) { tabbedEditor.getActiveTab().editor.markSaved(); } }
 
     // 1.21.1: 替换为 renderBackground
     @Override
     public void renderBackground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        graphics.fillGradient(0, 0, this.width, this.height, 0xFF1E1E1E, 0xFF1E1E1E);
+        graphics.fill(0, 0, this.width, this.height, 0xFF1E1E1E);
     }
 
-    // 1.21.1: 替换为 render
+    // 1.21.1 修复: 去除 § 格式码和 emoji (Minecraft 字体不支持)
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         graphics.fill(0, 0, this.width, topY, 0xFF333333);
-        // 1.21.1: text() -> drawString()，false 表示无阴影
-        graphics.drawString(this.font, "§cNEKO§fJS §8" + I18n.get("nekojs.gui.workspace.title"), 10, 6, -1, false);
+        // 标题: "NEKO"红色 + "JS"白色 + 描述灰色
+        String titleText = I18n.get("nekojs.gui.workspace.title");
+        int tx = 10;
+        graphics.drawString(this.font, "NEKO", tx, 6, 0xFFFF5555, false);
+        tx += this.font.width("NEKO");
+        graphics.drawString(this.font, "JS", tx, 6, 0xFFFFFFFF, false);
+        tx += this.font.width("JS ");
+        graphics.drawString(this.font, titleText, tx, 6, 0xFF888888, false);
+        // 关闭按钮
         int closeX = this.width - 20;
-        graphics.drawString(this.font, (mouseX >= closeX && mouseX <= closeX + 10 && mouseY >= 4 && mouseY <= 16) ? "§c✖" : "§7✖", closeX, 6, -1, false);
+        boolean hoverClose = mouseX >= closeX && mouseX <= closeX + 12 && mouseY >= 4 && mouseY <= 16;
+        graphics.drawString(this.font, "X", closeX, 6, hoverClose ? 0xFFFF5555 : 0xFF888888, false);
 
         graphics.fill(0, topY, actBarW, this.height, 0xFF333333);
 
-        int iconCenterYOffset = (actBarW - this.font.lineHeight) / 2;
-        int iconCenterX1 = (actBarW - this.font.width("📂")) / 2;
-        int iconCenterX2 = (actBarW - this.font.width("🔍")) / 2;
-        int iconCenterX3 = (actBarW - this.font.width("⚙")) / 2;
+        int iconCY = (actBarW - this.font.lineHeight) / 2;
+        int iconX1 = (actBarW - this.font.width("F")) / 2;
+        int iconX2 = (actBarW - this.font.width("S")) / 2;
+        int iconX3 = (actBarW - this.font.width("*")) / 2;
 
-        if (activeActivity == 0 && isSidebarOpen) { graphics.fill(0, topY, actBarW, topY + actBarW, 0xFF444444); graphics.fill(0, topY, 2, topY + actBarW, 0xFF007ACC); graphics.drawString(this.font, "§f📂", iconCenterX1, topY + iconCenterYOffset, -1, false); } else { boolean hov = mouseX >= 0 && mouseX <= actBarW && mouseY >= topY && mouseY < topY + actBarW; graphics.drawString(this.font, "§7📂", iconCenterX1, topY + iconCenterYOffset, hov ? 0xFFFFFFFF : -1, false); }
+        // 活动栏按钮 1 - 文件
+        if (activeActivity == 0 && isSidebarOpen) {
+            graphics.fill(0, topY, actBarW, topY + actBarW, 0xFF444444);
+            graphics.fill(0, topY, 2, topY + actBarW, 0xFF007ACC);
+            graphics.drawString(this.font, "F", iconX1, topY + iconCY, 0xFFFFFFFF, false);
+        } else {
+            boolean hov = mouseX >= 0 && mouseX <= actBarW && mouseY >= topY && mouseY < topY + actBarW;
+            graphics.drawString(this.font, "F", iconX1, topY + iconCY, hov ? 0xFFFFFFFF : 0xFF888888, false);
+        }
+        // 按钮 2 - 搜索
         int btn2Y = topY + actBarW;
-        if (activeActivity == 1 && isSidebarOpen) { graphics.fill(0, btn2Y, actBarW, btn2Y + actBarW, 0xFF444444); graphics.fill(0, btn2Y, 2, btn2Y + actBarW, 0xFF007ACC); graphics.drawString(this.font, "§f🔍", iconCenterX2, btn2Y + iconCenterYOffset, -1, false); } else { boolean hov = mouseX >= 0 && mouseX <= actBarW && mouseY >= btn2Y && mouseY < btn2Y + actBarW; graphics.drawString(this.font, "§7🔍", iconCenterX2, btn2Y + iconCenterYOffset, hov ? 0xFFFFFFFF : -1, false); }
-        int btnSettingsY = this.height - actBarW; boolean hovSettings = mouseX >= 0 && mouseX <= actBarW && mouseY >= btnSettingsY && mouseY < this.height; graphics.drawString(this.font, "§7⚙", iconCenterX3, btnSettingsY + iconCenterYOffset, hovSettings ? 0xFFFFFFFF : -1, false);
+        if (activeActivity == 1 && isSidebarOpen) {
+            graphics.fill(0, btn2Y, actBarW, btn2Y + actBarW, 0xFF444444);
+            graphics.fill(0, btn2Y, 2, btn2Y + actBarW, 0xFF007ACC);
+            graphics.drawString(this.font, "S", iconX2, btn2Y + iconCY, 0xFFFFFFFF, false);
+        } else {
+            boolean hov = mouseX >= 0 && mouseX <= actBarW && mouseY >= btn2Y && mouseY < btn2Y + actBarW;
+            graphics.drawString(this.font, "S", iconX2, btn2Y + iconCY, hov ? 0xFFFFFFFF : 0xFF888888, false);
+        }
+        // 按钮 3 - 设置
+        int btnSettingsY = this.height - actBarW;
+        boolean hovSettings = mouseX >= 0 && mouseX <= actBarW && mouseY >= btnSettingsY && mouseY < this.height;
+        graphics.drawString(this.font, "*", iconX3, btnSettingsY + iconCY, hovSettings ? 0xFFFFFFFF : 0xFF888888, false);
 
         if (isSidebarOpen) {
             graphics.fill(actBarW, topY, leftW, this.height, 0xFF252526);
@@ -692,15 +718,16 @@ public class NekoWorkspaceScreen extends Screen {
         public FileListWidget(Minecraft mc, int w, int h, int y, int ih) { super(mc, w, h, y, ih); }
         @Override public int getRowWidth() { return this.width - 12; }
         @Override protected int getScrollbarPosition() { return this.getX() + this.width - 6; } // 1.21.1 重命名
+        @Override protected void renderListBackground(GuiGraphics g) {} // 防止默认背景覆盖侧边栏
+        @Override protected void renderListSeparators(GuiGraphics g) {} // 防止默认分隔线覆盖侧边栏
         @Override public int addEntry(FileEntry entry) { return super.addEntry(entry); }
         @Override public int getItemCount() { return super.getItemCount(); }
     }
 
     private class FileEntry extends ObjectSelectionList.Entry<FileEntry> {
-        private final FileNode node; private final boolean isFlatSearch;
-        private long lastClickTime = 0; // 手动实现双击
+        private final FileNode node;
 
-        public FileEntry(FileNode node, boolean isFlatSearch) { this.node = node; this.isFlatSearch = isFlatSearch; }
+        public FileEntry(FileNode node) { this.node = node; }
 
         @Override
         public void render(GuiGraphics g, int index, int top, int left, int width, int height, int mouseX, int mouseY, boolean isHovered, float partialTick) {
@@ -790,31 +817,21 @@ public class NekoWorkspaceScreen extends Screen {
         @Override
         public boolean mouseClicked(double mouseX, double mouseY, int button) {
             if (button == 0) {
-                long now = Util.getMillis();
-                boolean doubleClick = (now - lastClickTime) < 250;
-                lastClickTime = now;
-
                 if (node.isDir) {
-                    int indent = (node.depth * 10 + 4);
-                    // 1.21.1: 需要自己拿到列表项所在的 X 或者使用大概估计，这里用 mouseX 判断
-                    if (mouseX < NekoWorkspaceScreen.this.fileListWidget.getX() - (int) NekoWorkspaceScreen.this.listScrollX + indent + 10) {
-                        node.isExpanded = !node.isExpanded;
-                    } else {
-                        node.isExpanded = !node.isExpanded;
-                        NekoWorkspaceScreen.this.selectedFilePath = node.path;
-                        NekoWorkspaceScreen.this.selectedMatchStart = -1;
-                    }
+                    node.isExpanded = !node.isExpanded;
+                    NekoWorkspaceScreen.this.selectedFilePath = node.path;
+                    NekoWorkspaceScreen.this.selectedMatchStart = -1;
                     NekoWorkspaceScreen.this.refreshFileList();
                     return true;
                 } else {
+                    // 1.21.1 修复: 单击直接打开文件
                     NekoWorkspaceScreen.this.selectedFilePath = node.path;
-
                     if (node instanceof SearchMatchNode match) {
                         NekoWorkspaceScreen.this.selectedMatchStart = match.globalStart;
                         NekoWorkspaceScreen.this.openFileInEditor(node.path, match.globalStart, match.globalEnd);
                     } else {
                         NekoWorkspaceScreen.this.selectedMatchStart = -1;
-                        if (doubleClick) NekoWorkspaceScreen.this.openFileInEditor(node.path);
+                        NekoWorkspaceScreen.this.openFileInEditor(node.path);
                     }
                     NekoWorkspaceScreen.this.refreshFileList();
                     return true;

@@ -11,9 +11,8 @@ import java.util.*;
 public final class NekoBindings {
     private static final List<Binding> RAW_BINDINGS = new ArrayList<>();
 
-    // 【修改点 1】: 泛型参数改为两个。第一个是枚举类型 ScriptType，第二个是存储的 Map 类型
-    private static final ScriptTypedValue<ScriptType, Map<String, Binding>> ENVIRONMENT_BINDINGS =
-            ScriptTypedValue.of(ScriptType.values(), type -> new LinkedHashMap<>());
+    private static final ScriptTypedValue<Map<String, Binding>> ENVIRONMENT_BINDINGS =
+            ScriptTypedValue.of(type -> new LinkedHashMap<>());
 
     private static boolean initialized = false;
 
@@ -28,6 +27,7 @@ public final class NekoBindings {
                 ScriptType existingType = existing.scriptType();
 
                 if (type == ScriptType.COMMON || existingType == ScriptType.COMMON || type == existingType) {
+
                     String newClassPath = binding.getType().getName();
                     String existingClassPath = existing.getType().getName();
 
@@ -40,6 +40,7 @@ public final class NekoBindings {
                 }
             }
         }
+
         RAW_BINDINGS.add(binding);
     }
 
@@ -50,23 +51,21 @@ public final class NekoBindings {
         if (!initialized) {
             initialize();
         }
-        // 【修改点 2】: 这里的 at(type) 会根据新的泛型返回 Map<String, Binding>，无需强转
         return Collections.unmodifiableMap(ENVIRONMENT_BINDINGS.at(type));
     }
 
     private static void initialize() {
         var plugins = NekoJSPluginManager.getPlugins();
 
-        plugins.forEach(plugin -> plugin.registerBindings(binding -> register((Binding) binding)));
+        plugins.forEach(plugin -> plugin.registerBindings(NekoBindings::register));
 
         if (FMLEnvironment.dist == Dist.CLIENT) {
-            plugins.forEach(plugin -> plugin.registerClientBindings(binding -> register((Binding) binding)));
+            plugins.forEach(plugin -> plugin.registerClientBindings(NekoBindings::register));
         }
 
         for (Binding binding : RAW_BINDINGS) {
             for (ScriptType envType : ScriptType.all()) {
-                if (binding.canApplyOn(envType) || binding.scriptType() == ScriptType.COMMON) {
-                    // 【修改点 3】: ENVIRONMENT_BINDINGS.at(envType) 现在能正确识别为 Map
+                if (binding.canApplyOn(envType)) {
                     ENVIRONMENT_BINDINGS.at(envType).put(binding.getName(), binding);
                 }
             }

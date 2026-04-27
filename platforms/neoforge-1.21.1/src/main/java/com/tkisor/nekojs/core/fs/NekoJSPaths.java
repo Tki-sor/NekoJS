@@ -46,43 +46,7 @@ public final class NekoJSPaths {
         ensureDir(NODE_MODULES);
 
         createReadme();
-        loadEngineConfig();
-    }
-
-    private static void loadEngineConfig() {
-        try (var config = com.electronwill.nightconfig.core.file.CommentedFileConfig.builder(ENGINE_CONFIG)
-                .sync()
-                .preserveInsertionOrder()
-                .autosave()
-                .build()) {
-
-            config.load();
-
-            if (!config.contains("allowThreads")) {
-                config.set("allowThreads", false);
-                config.setComment("allowThreads", " Allows scripts to create unmanaged background threads. May cause lag or resource leaks.");
-            }
-            if (!config.contains("allowReflection")) {
-                config.set("allowReflection", false);
-                config.setComment("allowReflection", " Allows scripts to bypass access controls via reflection and modify private Java data.");
-            }
-            if (!config.contains("allowAsm")) {
-                config.set("allowAsm", false);
-                config.setComment("allowAsm", " Allows scripts to directly manipulate Java bytecode. Incorrect usage may cause severe crashes.");
-            }
-
-            ClassFilter.allowThreads = config.get("allowThreads");
-            ClassFilter.allowReflection = config.get("allowReflection");
-            ClassFilter.allowAsm = config.get("allowAsm");
-
-            NekoJS.LOGGER.info(
-                    "[NekoJS] Engine config loaded. Unsafe features enabled: {}",
-                    ClassFilter.isAnyUnsafeFeatureEnabled()
-            );
-
-        } catch (Exception e) {
-            NekoJS.LOGGER.error("[NekoJS] Failed to load engine.toml", e);
-        }
+        ClassFilter.loadEngineConfig();
     }
 
     /* ================= Utilities ================= */

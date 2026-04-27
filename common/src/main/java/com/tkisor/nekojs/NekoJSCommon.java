@@ -1,10 +1,11 @@
 package com.tkisor.nekojs;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 public class NekoJSCommon {
     public static final String MODID = "nekojs";
-    public static final Logger LOGGER = LoggerFactory.getLogger("NekoJS");
+    public static final Logger LOGGER = LogManager.getLogger("NekoJS");
 
 }

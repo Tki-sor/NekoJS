@@ -7,6 +7,7 @@ import com.tkisor.nekojs.api.event.EventGroup;
 import com.tkisor.nekojs.api.event.NekoEventGroups;
 import com.tkisor.nekojs.api.recipe.NekoRecipeNamespaces;
 import com.tkisor.nekojs.script.ScriptType;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 
@@ -25,8 +26,6 @@ import java.util.*;
  * Set<String> recipeNamespaces = snapshot.recipeNamespaces();
  * Set<Class<?>> adapterTargets = snapshot.typeAdapterTargets();
  * }</pre>
- *
- * @since 1.1
  */
 public final class NekoContextSnapshot {
 
@@ -126,5 +125,19 @@ public final class NekoContextSnapshot {
      */
     public Set<Class<?>> typeAdapterTargets() {
         return typeAdapterTargets;
+    }
+
+    /**
+     * 获取指定配方命名空间对应的 handler 类型。
+     * <p>
+     * 例如 {@code getHandlerClassForNamespace("minecraft")} 返回 {@code MinecraftRecipeHandler.class}。
+     * 外部 mod（如 .d.ts 生成器）可用 {@link MemberVisibilityQuery} 反射其方法签名。
+     * </p>
+     *
+     * @param namespace 配方命名空间
+     * @return handler 的 Java 类；未注册时返回 {@code null}
+     */
+    public static @Nullable Class<?> getHandlerClassForNamespace(String namespace) {
+        return NekoRecipeNamespaces.getHandlerClass(namespace);
     }
 }

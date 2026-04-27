@@ -16,14 +16,9 @@ public enum ScriptType {
     SERVER("server", "NekoJS Server", NekoJSPaths.SERVER_SCRIPTS),
     CLIENT("client", "NekoJS Client", NekoJSPaths.CLIENT_SCRIPTS);
 
-    /**
-     * 内部类持有日志记录器，实现懒加载
-     */
     private static class LoggerHolder {
-        // 【修改点 1】: 泛型声明改为 <ScriptType, Logger>
-        // 【修改点 2】: Lambda 表达式中的 type 直接就是 ScriptType 类型，无需强转
-        private static final ScriptTypedValue<ScriptType, Logger> LOGGERS =
-                ScriptTypedValue.of(ScriptType.values(), type -> NekoJSLoggers.createLogger(type.name));
+        private static final ScriptTypedValue<Logger> LOGGERS =
+                ScriptTypedValue.of(type -> NekoJSLoggers.createLogger(type.name));
     }
 
     public final String name;

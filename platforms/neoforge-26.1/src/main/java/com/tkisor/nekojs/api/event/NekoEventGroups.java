@@ -34,9 +34,9 @@ public final class NekoEventGroups {
 
     private static void initialize() {
         var plugins = NekoJSPluginManager.getPlugins();
-        plugins.forEach(plugin -> plugin.registerEvents(group -> register((EventGroup) group)));
+        plugins.forEach(plugin -> plugin.registerEvents(NekoEventGroups::register));
         if (FMLEnvironment.getDist() == Dist.CLIENT) {
-            plugins.forEach(plugin -> plugin.registerClientEvents(group -> register((EventGroup) group)));
+            plugins.forEach(plugin -> plugin.registerClientEvents(NekoEventGroups::register));
         }
         initialized = true;
     }
